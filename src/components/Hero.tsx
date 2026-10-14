@@ -46,13 +46,13 @@ export default function Hero({ roomTypes, onSearch }: HeroProps) {
         }}
       />
 
-      {/* Atmospheric Maroon Vignette & Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/85 via-[#381018]/75 to-[#2B0E14] backdrop-brightness-75" />
+      {/* Atmospheric Maroon Overlay (Crisp without fog) */}
+      <div className="absolute inset-0 bg-[#2B0E14]/70" />
 
       {/* Hero Content Container */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center flex flex-col items-center">
         {/* Subtitle Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E5C378]/30 bg-[#2B0E14]/70 backdrop-blur-sm text-[#E5C378] text-xs font-semibold tracking-[0.25em] uppercase mb-8 shadow-md">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E5C378]/30 bg-[#2B0E14] text-[#E5C378] text-xs font-semibold tracking-[0.25em] uppercase mb-8 shadow-md">
           <Sparkles className="w-3.5 h-3.5 text-[#E5C378]" />
           <span>A Sanctuary of Coastal Opulence</span>
         </div>
@@ -75,7 +75,7 @@ export default function Hero({ roomTypes, onSearch }: HeroProps) {
         {/* Floating Availability Pill Card (Matches Screenshot 1) */}
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-4xl bg-[#381018]/90 backdrop-blur-xl border border-[#5A1C2A] p-4 sm:p-5 rounded-2xl sm:rounded-full shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4"
+          className="w-full max-w-4xl bg-[#381018] border border-[#5A1C2A] p-4 sm:p-5 rounded-2xl sm:rounded-full shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4"
         >
           {/* Check-In Date */}
           <div className="w-full sm:w-1/3 flex flex-col px-4 text-left border-b sm:border-b-0 sm:border-r border-[#5A1C2A]/60 pb-3 sm:pb-0">
@@ -143,9 +143,6 @@ export default function Hero({ roomTypes, onSearch }: HeroProps) {
           </button>
         </form>
       </div>
-
-      {/* Subtle Bottom Ambient Gradient */}
-      <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#FBF5F5] to-transparent pointer-events-none" />
     </section>
   );
 }
