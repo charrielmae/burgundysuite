@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "burgundysuite-db",
-      "database_id": "YOUR_CLOUDFLARE_D1_DATABASE_ID",
+      "database_id": "9b1eb0fe-1e04-44d1-9cc7-e1a800009618",
       "migrations_dir": "migrations"
     }
   ]
