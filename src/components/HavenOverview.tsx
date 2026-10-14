@@ -59,60 +59,66 @@ export default function HavenOverview() {
             </div>
           </div>
 
-          {/* Right Column: Asymmetric Bento Grid (Matches Screenshot 2) */}
+          {/* Right Column: Two-Column Staggered Bento Masonry (Matches Screenshot 2) */}
           <div className="lg:col-span-7 relative">
-            <div className="grid grid-cols-2 gap-4 sm:gap-5">
-              {/* Photo 1: Spa amenity with bottle, candle, towel, tulips */}
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/5] shadow-lg group">
-                <img
-                  src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80"
-                  alt="Velvet Lotus Spa Towel and Amenities"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/40 to-transparent" />
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 items-start">
+              {/* Left Column Stack */}
+              <div className="flex flex-col gap-4 sm:gap-5">
+                {/* Photo 1: Spa amenity with bottle, candle, towel, tulips (Tall aspect) */}
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/5] shadow-md hover:shadow-xl transition-all duration-500 group bg-[#2B0E14]">
+                  <img
+                    src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=85"
+                    alt="Velvet Lotus Spa Towel and Amenities"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 via-transparent to-transparent pointer-events-none" />
+                </div>
+
+                {/* Photo 3: Pool at twilight reflecting the modern pavilion (Wider aspect) */}
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/3] shadow-md hover:shadow-xl transition-all duration-500 group bg-[#2B0E14]">
+                  <img
+                    src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=85"
+                    alt="Resort Pool at Twilight"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 via-transparent to-transparent pointer-events-none" />
+                </div>
               </div>
 
-              {/* Photo 2: King Bedroom with wood flooring and balcony */}
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/3] shadow-lg group">
-                <img
-                  src="https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80"
-                  alt="Plush Suite Bedroom"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 to-transparent" />
-              </div>
+              {/* Right Column Stack */}
+              <div className="flex flex-col gap-4 sm:gap-5">
+                {/* Photo 2: King Bedroom with wood flooring and balcony (Wider aspect) */}
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/3] shadow-md hover:shadow-xl transition-all duration-500 group bg-[#2B0E14]">
+                  <img
+                    src="https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=900&q=85"
+                    alt="Plush Suite Bedroom with Balcony View"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 via-transparent to-transparent pointer-events-none" />
+                </div>
 
-              {/* Photo 3: Pool at twilight reflecting the modern pavilion */}
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/3] shadow-lg group">
-                <img
-                  src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80"
-                  alt="Resort Pool at Twilight"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 to-transparent" />
-              </div>
-
-              {/* Photo 4: Modern sunlit luxury pavilion with floor-to-ceiling glass */}
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/5] shadow-lg group">
-                <img
-                  src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80"
-                  alt="Modern Sunlit Villa Pavilion"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 to-transparent" />
+                {/* Photo 4: Modern sunlit luxury villa with floor-to-ceiling glass and pool (Tall aspect) */}
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/5] shadow-md hover:shadow-xl transition-all duration-500 group bg-[#2B0E14]">
+                  <img
+                    src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=85"
+                    alt="Modern Sunlit Villa Pavilion"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2B0E14]/30 via-transparent to-transparent pointer-events-none" />
+                </div>
               </div>
             </div>
 
             {/* Floating 5.0 Star Luxury Hotel Award Badge (Bottom Center) */}
-            <div className="absolute -bottom-5 left-8 sm:left-12 bg-[#2B0E14] border border-[#E5C378]/40 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3">
-              <span className="font-serif text-2xl font-bold text-[#E5C378]">5.0</span>
+            <div className="absolute -bottom-5 left-6 sm:left-10 bg-[#2B0E14] border border-[#E5C378]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3.5 z-10 backdrop-blur-md">
+              <span className="font-serif text-2xl font-bold text-[#E5C378] tracking-tight">5.0</span>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1 text-[#E5C378]">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="w-3.5 h-3.5 fill-[#E5C378]" />
                   ))}
                 </div>
-                <span className="text-[11px] font-semibold text-white/90 tracking-wide mt-0.5">
+                <span className="text-[11px] font-semibold text-white/95 tracking-wide mt-0.5">
                   World Luxury Hotel Award Winner
                 </span>
               </div>
