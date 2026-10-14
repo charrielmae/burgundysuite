@@ -26,7 +26,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const updated = updateRoomStatus(Number(room_id), status as RoomStatus);
+    const updated = await updateRoomStatus(Number(room_id), status as RoomStatus);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: 'Room not found' },

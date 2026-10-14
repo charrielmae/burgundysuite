@@ -16,7 +16,7 @@ export async function POST(
       );
     }
 
-    const updated = processCheckOut(bookingId);
+    const updated = await processCheckOut(bookingId);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: 'Booking not found' },

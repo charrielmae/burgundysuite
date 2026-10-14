@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import {
+  queryCloudflareD1,
+  batchCloudflareD1,
+  isCloudflareD1Configured,
+} from './cloudflare-d1';
+import {
   UserAccount,
   StaffDetails,
   GuestDetails,
@@ -378,12 +383,25 @@ export function getRooms(): RoomWithDetails[] {
   });
 }
 
-export function updateRoomStatus(roomId: number, status: RoomStatus): RoomDetails | null {
+export async function updateRoomStatus(roomId: number, status: RoomStatus): Promise<RoomDetails | null> {
   const db = readDb();
   const room = db.ROOM_DETAILS.find((r) => r.room_id === roomId);
   if (!room) return null;
   room.room_status = status;
   saveDb(db);
+
+  if (isCloudflareD1Configured()) {
+    try {
+      await queryCloudflareD1(`UPDATE ROOM_DETAILS SET room_status = ? WHERE room_id = ?;`, [
+        status,
+        roomId,
+      ]);
+      console.log(`[Cloudflare D1] Updated room #${roomId} status to ${status}`);
+    } catch (err) {
+      console.error('[Cloudflare D1 updateRoomStatus error]:', err);
+    }
+  }
+
   return room;
 }
 
@@ -459,7 +477,7 @@ export function getBookingsByEmail(email: string): BookingWithDetails[] {
   return all.filter((b) => b.guest.email_address.toLowerCase() === normalized);
 }
 
-export function createBooking(req: NewBookingRequest): { booking: BookingWithDetails; receiptNumber: string } {
+export async function createBooking(req: NewBookingRequest): Promise<{ booking: BookingWithDetails; receiptNumber: string }> {
   const db = readDb();
 
   // Find available room of requested room_type_id
@@ -537,6 +555,66 @@ export function createBooking(req: NewBookingRequest): { booking: BookingWithDet
 
   saveDb(db);
 
+  // Stream to Cloudflare D1 Database if configured
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `INSERT OR IGNORE INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, ?, 'guest', 'active', ?);`,
+          params: [
+            newUserId,
+            username,
+            '$argon2id$guest_session_hash',
+            new Date().toISOString().replace('T', ' ').slice(0, 19),
+          ],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationality, civil_status, contact_number, email_address, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          params: [
+            guest.user_id,
+            guest.first_name,
+            guest.last_name,
+            guest.birth_date,
+            guest.nationality,
+            guest.civil_status,
+            guest.contact_number,
+            guest.email_address,
+            guest.address,
+          ],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO ROOM_BOOKING (booking_id, user_id, room_id, booking_date, check_in_date, check_out_date, total_amount, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'checked-in');`,
+          params: [
+            newBooking.booking_id,
+            newBooking.user_id,
+            newBooking.room_id,
+            newBooking.booking_date,
+            newBooking.check_in_date,
+            newBooking.check_out_date,
+            newBooking.total_amount,
+          ],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO PAYMENT_DETAILS (payment_id, booking_id, payment_method, amount, payment_status, payment_date) VALUES (?, ?, ?, ?, 'paid', ?);`,
+          params: [
+            payment.payment_id,
+            payment.booking_id,
+            payment.payment_method,
+            payment.amount,
+            new Date().toISOString().replace('T', ' ').slice(0, 19),
+          ],
+        },
+        {
+          sql: `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ?;`,
+          params: [selectedRoom.room_id],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Successfully streamed booking #${newBookingId} to Cloudflare Database`);
+    } catch (err) {
+      console.error('[Cloudflare D1 createBooking sync error]:', err);
+    }
+  }
+
   const bookingWithDetails: BookingWithDetails = {
     ...newBooking,
     guest,
@@ -551,7 +629,7 @@ export function createBooking(req: NewBookingRequest): { booking: BookingWithDet
   };
 }
 
-export function processCheckOut(bookingId: number): BookingWithDetails | null {
+export async function processCheckOut(bookingId: number): Promise<BookingWithDetails | null> {
   const db = readDb();
   const booking = db.ROOM_BOOKING.find((b) => b.booking_id === bookingId);
   if (!booking) return null;
@@ -565,10 +643,29 @@ export function processCheckOut(bookingId: number): BookingWithDetails | null {
   }
 
   saveDb(db);
+
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `UPDATE ROOM_BOOKING SET booking_status = 'completed' WHERE booking_id = ?;`,
+          params: [bookingId],
+        },
+        {
+          sql: `UPDATE ROOM_DETAILS SET room_status = 'available' WHERE room_id = ?;`,
+          params: [booking.room_id],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Checked out booking #${bookingId} in Cloudflare Database`);
+    } catch (err) {
+      console.error('[Cloudflare D1 processCheckOut sync error]:', err);
+    }
+  }
+
   return getBookingById(bookingId);
 }
 
-export function simulateDueCheckouts(): { count: number; processedBookings: number[] } {
+export async function simulateDueCheckouts(): Promise<{ count: number; processedBookings: number[] }> {
   const db = readDb();
   const today = '2026-10-14';
   const processed: number[] = [];
@@ -585,6 +682,29 @@ export function simulateDueCheckouts(): { count: number; processedBookings: numb
   }
 
   saveDb(db);
+
+  if (isCloudflareD1Configured() && processed.length > 0) {
+    try {
+      const stmts = processed.flatMap((bid) => {
+        const b = db.ROOM_BOOKING.find((x) => x.booking_id === bid);
+        return [
+          {
+            sql: `UPDATE ROOM_BOOKING SET booking_status = 'completed' WHERE booking_id = ?;`,
+            params: [bid],
+          },
+          {
+            sql: `UPDATE ROOM_DETAILS SET room_status = 'available' WHERE room_id = ?;`,
+            params: [b?.room_id],
+          },
+        ];
+      });
+      await batchCloudflareD1(stmts);
+      console.log(`[Cloudflare D1] Simulated due checkouts for bookings: ${processed.join(', ')}`);
+    } catch (err) {
+      console.error('[Cloudflare D1 simulateDueCheckouts sync error]:', err);
+    }
+  }
+
   return { count: processed.length, processedBookings: processed };
 }
 

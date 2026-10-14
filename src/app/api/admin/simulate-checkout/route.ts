@@ -3,7 +3,7 @@ import { simulateDueCheckouts } from '@/lib/db';
 
 export async function POST() {
   try {
-    const result = simulateDueCheckouts();
+    const result = await simulateDueCheckouts();
     return NextResponse.json({
       success: true,
       message: `Simulated checkout for ${result.count} due room(s).`,

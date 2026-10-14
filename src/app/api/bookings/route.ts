@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = createBooking(body);
+    const result = await createBooking(body);
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
