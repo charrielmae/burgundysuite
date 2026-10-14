@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { RoomTypeDetails } from '@/types/database';
-import { Users, Sparkles, Check, ArrowRight } from 'lucide-react';
+import { Users, Sparkles, Check, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SuitesSectionProps {
   roomTypes: RoomTypeDetails[];
@@ -10,6 +10,20 @@ interface SuitesSectionProps {
 }
 
 export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionProps) {
+  const ITEMS_PER_PAGE = 4;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(roomTypes.length / ITEMS_PER_PAGE);
+
+  // Keep currentPage valid when roomTypes changes
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [roomTypes.length, totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentSuites = roomTypes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   return (
     <section id="suites" className="py-24 bg-white text-[#1C1917] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,9 +41,9 @@ export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionP
           </p>
         </div>
 
-        {/* Luxury Accommodations Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-7">
-          {roomTypes.map((suite) => (
+        {/* 4-Card Luxury Grid (Matches Screenshot) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
+          {currentSuites.map((suite) => (
             <div
               key={suite.room_type_id}
               className="group bg-white rounded-2xl overflow-hidden border border-[#5A1C2A]/15 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
@@ -99,7 +113,72 @@ export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionP
             </div>
           ))}
         </div>
+
+        {/* Luxury Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="mt-12 pt-8 border-t border-[#5A1C2A]/10 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+            {/* Showing Range Details */}
+            <div className="text-xs text-[#5C4047] font-medium tracking-wide">
+              Showing{' '}
+              <span className="font-bold text-[#742537]">
+                {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, roomTypes.length)}
+              </span>{' '}
+              of <span className="font-bold text-[#742537]">{roomTypes.length}</span> curated
+              accommodations
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-2">
+              {/* Previous Page Button */}
+              <button
+                onClick={() => {
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                  document.getElementById('suites')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#5A1C2A]/20 bg-white text-xs font-bold text-[#2B0E14] hover:border-[#742537] hover:text-[#742537] hover:bg-[#742537]/5 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-xs"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-[#742537]" />
+                <span className="hidden sm:inline">Previous</span>
+              </button>
+
+              {/* Page Number Pills */}
+              <div className="flex items-center gap-1.5 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => {
+                      setCurrentPage(page);
+                      document.getElementById('suites')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                      currentPage === page
+                        ? 'bg-[#742537] text-white shadow-md scale-105'
+                        : 'bg-white border border-[#5A1C2A]/15 text-[#5C4047] hover:border-[#742537] hover:text-[#742537] hover:bg-[#742537]/5'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              {/* Next Page Button */}
+              <button
+                onClick={() => {
+                  setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  document.getElementById('suites')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#5A1C2A]/20 bg-white text-xs font-bold text-[#2B0E14] hover:border-[#742537] hover:text-[#742537] hover:bg-[#742537]/5 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer shadow-xs"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="w-3.5 h-3.5 text-[#742537]" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
 }
+
