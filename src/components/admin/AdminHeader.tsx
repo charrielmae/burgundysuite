@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
   Plus,
+  Cloud,
 } from 'lucide-react';
 import { AuthenticatedAdmin } from '@/lib/db';
 
@@ -19,6 +20,8 @@ interface AdminHeaderProps {
   onExportReport: () => void;
   onResetData: () => void;
   onOpenAddSuite?: () => void;
+  onOpenCloudflareModal?: () => void;
+  isCloudflareConnected?: boolean;
   pendingCheckoutsCount: number;
   currentUser?: AuthenticatedAdmin | null;
   onLogout?: () => void;
@@ -29,6 +32,8 @@ export default function AdminHeader({
   onExportReport,
   onResetData,
   onOpenAddSuite,
+  onOpenCloudflareModal,
+  isCloudflareConnected = false,
   pendingCheckoutsCount,
   currentUser,
   onLogout,
@@ -79,6 +84,29 @@ export default function AdminHeader({
               <span>Admin Portal</span>
             </div>
           </div>
+
+          {/* Cloudflare D1 Status Pill */}
+          {onOpenCloudflareModal && (
+            <button
+              onClick={onOpenCloudflareModal}
+              title="Cloudflare D1 Database Connection & Sync Status"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs ${
+                isCloudflareConnected
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5 text-[#F6821F]" />
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isCloudflareConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`}
+              />
+              <span>
+                {isCloudflareConnected ? 'Cloudflare D1: Live' : 'Cloudflare D1: Setup / Sync'}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Right Side: Action Controls */}

@@ -330,7 +330,7 @@ const INITIAL_DATA: DatabaseData = {
 
 const DB_FILE = path.join(process.cwd(), 'data', 'burgundy_store.json');
 
-function readDb(): DatabaseData {
+export function readDb(): DatabaseData {
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');

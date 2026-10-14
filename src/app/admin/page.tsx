@@ -10,6 +10,7 @@ import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
 import BookingsTable from '@/components/admin/BookingsTable';
 import PaymentLogs from '@/components/admin/PaymentLogs';
 import AddSuiteModal from '@/components/admin/AddSuiteModal';
+import CloudflareD1Modal from '@/components/admin/CloudflareD1Modal';
 import Footer from '@/components/Footer';
 import {
   AdminKPIs as AdminKPIsType,
@@ -29,6 +30,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAddSuiteOpen, setIsAddSuiteOpen] = useState(false);
+  const [isCloudflareOpen, setIsCloudflareOpen] = useState(false);
+  const [isCloudflareConnected, setIsCloudflareConnected] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -38,24 +41,27 @@ export default function AdminPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [kpiRes, roomRes, bookingRes, payRes] = await Promise.all([
+      const [kpiRes, roomRes, bookingRes, payRes, cfRes] = await Promise.all([
         fetch('/api/admin/metrics'),
         fetch('/api/rooms'),
         fetch('/api/bookings?filter=all'),
         fetch('/api/payments'),
+        fetch('/api/cloudflare'),
       ]);
 
-      const [kpiData, roomData, bookingData, payData] = await Promise.all([
+      const [kpiData, roomData, bookingData, payData, cfData] = await Promise.all([
         kpiRes.json(),
         roomRes.json(),
         bookingRes.json(),
         payRes.json(),
+        cfRes.json(),
       ]);
 
       if (kpiData.success) setKpis(kpiData.data);
       if (roomData.success) setRooms(roomData.data);
       if (bookingData.success) setBookings(bookingData.data);
       if (payData.success) setPayments(payData.data);
+      if (cfData.success) setIsCloudflareConnected(Boolean(cfData.data?.connected));
     } catch (err) {
       console.error('Failed to load admin data:', err);
       showToast('Error refreshing command center metrics');
@@ -251,6 +257,8 @@ export default function AdminPage() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenAddSuite={() => setIsAddSuiteOpen(true)}
+        onOpenCloudflareModal={() => setIsCloudflareOpen(true)}
+        isCloudflareConnected={isCloudflareConnected}
         onSimulateCheckouts={handleSimulateCheckouts}
         onExportReport={handleExportReport}
         onResetData={handleResetData}
@@ -305,6 +313,16 @@ export default function AdminPage() {
         onClose={() => setIsAddSuiteOpen(false)}
         onSuccess={(suiteName) => {
           showToast(`Suite "${suiteName}" published successfully! Available immediately in Guest Portal.`);
+          loadData();
+        }}
+      />
+
+      {/* Cloudflare D1 Connection & Sync Modal */}
+      <CloudflareD1Modal
+        isOpen={isCloudflareOpen}
+        onClose={() => setIsCloudflareOpen(false)}
+        onStatusChange={(connected) => {
+          setIsCloudflareConnected(connected);
           loadData();
         }}
       />

@@ -199,6 +199,20 @@
         "Panoramic Sunset Deck",
         "24/7 Butler Service"
       ]
+    },
+    {
+      "room_type_id": 6,
+      "room_type": "Family Suite",
+      "room_capacity": 10,
+      "rate_per_night": 3200,
+      "description": "Spacious coastal retreat with ocean view balcony and plush king bedding.",
+      "image_url": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80",
+      "badge": "Up to 10 Guests",
+      "features": [
+        "Balcony with Sea Breeze",
+        "En-suite Rain Shower",
+        "Artisanal Mini Bar"
+      ]
     }
   ],
   "ROOM_DETAILS": [
@@ -249,6 +263,13 @@
       "room_type_id": 5,
       "room_number": 401,
       "floor_number": 4,
+      "room_status": "available"
+    },
+    {
+      "room_id": 8,
+      "room_type_id": 6,
+      "room_number": 502,
+      "floor_number": 5,
       "room_status": "available"
     }
   ],
