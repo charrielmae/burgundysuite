@@ -58,9 +58,9 @@ export default function Hero({ roomTypes, onSearch }: HeroProps) {
         </div>
 
         {/* Main Title */}
-        <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-light text-white tracking-tight leading-[1.15] mb-6">
+        <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-light text-white tracking-tight leading-[1.25] mb-6 overflow-visible">
           Experience Unmatched{' '}
-          <span className="italic font-normal font-serif text-[#E5C378] gold-gradient-text drop-shadow-[0_2px_12px_rgba(212,175,55,0.3)]">
+          <span className="italic font-normal font-serif text-[#E5C378] gold-gradient-text tracking-normal drop-shadow-[0_2px_12px_rgba(212,175,55,0.3)] pr-4 pl-1 py-1">
             Elegance
           </span>
         </h1>

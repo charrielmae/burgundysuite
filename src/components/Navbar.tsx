@@ -84,21 +84,16 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
 
         {/* Right CTA Actions */}
         <div className="flex items-center gap-3">
-          {/* Admin / Guest Mode Switcher */}
-          <Link
-            href={isAdmin ? '/' : '/admin'}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
-              isAdmin
-                ? 'bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
-                : 'bg-[#2B0E14]/80 text-[#F5EFEB] border-[#5A1C2A] hover:border-[#E5C378]/50'
-            }`}
-          >
-            <ShieldCheck
-              className={`w-3.5 h-3.5 ${isAdmin ? 'text-[#741B2D]' : 'text-[#E5C378]'}`}
-            />
-            <span>{isAdmin ? 'Guest Portal' : 'Admin Portal'}</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </Link>
+          {/* If viewing admin page, show quick return to Guest Portal */}
+          {isAdmin && (
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300 transition-all duration-200"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#741B2D]" />
+              <span>Guest Portal</span>
+            </Link>
+          )}
 
           {/* Reserve CTA */}
           <button

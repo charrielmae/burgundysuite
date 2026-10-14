@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, Phone, Mail, Globe, Share2, Compass, Award } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Share2, Compass, Award, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -62,8 +62,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-[#E5C378] transition-colors">
-                  Staff Command Center
+                <Link
+                  href="/admin"
+                  className="hover:text-[#E5C378] transition-colors flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3 h-3 text-[#E5C378]" />
+                  <span>Admin Portal</span>
                 </Link>
               </li>
             </ul>
@@ -107,13 +111,21 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {/* Bottom Bar with Admin Portal Pill */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-white/50 gap-4">
           <p>© 2026 Burgundy Suite & Resort. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-5">
             <span className="hover:text-white cursor-pointer">Privacy Policy</span>
             <span className="hover:text-white cursor-pointer">Terms of Hospitality</span>
             <span className="hover:text-white cursor-pointer">Concierge Protocols</span>
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2B0E14] border border-[#5A1C2A] text-[#E5C378] hover:text-white hover:border-[#E5C378] transition-all cursor-pointer shadow-xs ml-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#E5C378]" />
+              <span className="font-semibold text-[11px]">Admin Portal</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            </Link>
           </div>
         </div>
       </div>
