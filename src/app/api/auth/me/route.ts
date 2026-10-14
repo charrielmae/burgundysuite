@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getCurrentAdminSession } from '@/lib/auth';
+import { getCurrentAdminSession, setAdminSession } from '@/lib/auth';
+import { verifyCloudflareAccessHeader } from '@/lib/cloudflare-auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const adminUser = await getCurrentAdminSession();
+    let adminUser = await getCurrentAdminSession();
+
+    // If not found in session cookie, check if request came through Cloudflare Access (Zero Trust)
+    if (!adminUser) {
+      const cfUser = await verifyCloudflareAccessHeader(request.headers);
+      if (cfUser) {
+        adminUser = cfUser;
+        await setAdminSession(cfUser);
+      }
+    }
 
     if (!adminUser) {
       return NextResponse.json({

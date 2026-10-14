@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
-import { authenticateAdmin } from '@/lib/db';
+import { authenticateAdminWithCloudflare, verifyCloudflareTurnstile } from '@/lib/cloudflare-auth';
 import { setAdminSession } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { username, password, turnstileToken } = body;
+
+    // Optional Cloudflare Turnstile bot verification
+    if (turnstileToken) {
+      const turnstileCheck = await verifyCloudflareTurnstile(turnstileToken);
+      if (!turnstileCheck.success) {
+        return NextResponse.json(
+          { success: false, error: turnstileCheck.error || 'Turnstile verification failed.' },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!username || !password) {
       return NextResponse.json(
@@ -14,7 +25,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const adminUser = authenticateAdmin(username, password);
+    // Authenticate against Cloudflare D1 Database (with local fallback)
+    const adminUser = await authenticateAdminWithCloudflare(username, password);
 
     if (!adminUser) {
       return NextResponse.json(
