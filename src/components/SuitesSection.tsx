@@ -42,10 +42,13 @@ export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionP
         </div>
 
         {/* Horizontal Sliding Carousel Viewport */}
-        <div className="overflow-hidden w-full -mx-2 px-2 py-3">
+        <div className="overflow-hidden w-full py-4">
           <div
             className="flex transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-transform"
-            style={{ transform: `translateX(-${(currentPage - 1) * 100}%)` }}
+            style={{
+              gap: '2.5rem',
+              transform: `translateX(calc(-${(currentPage - 1) * 100}% - ${(currentPage - 1) * 2.5}rem))`,
+            }}
           >
             {Array.from({ length: totalPages }).map((_, pageIdx) => {
               const pageSuites = roomTypes.slice(
@@ -53,7 +56,7 @@ export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionP
                 (pageIdx + 1) * ITEMS_PER_PAGE
               );
               return (
-                <div key={pageIdx} className="w-full shrink-0">
+                <div key={pageIdx} className="w-full shrink-0 px-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
                     {pageSuites.map((suite) => (
                       <div
