@@ -204,9 +204,9 @@ export default function AdminPage() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-[#1F070C] flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-[0.2em] text-[#E5C378]">
+      <main className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center text-slate-800">
+        <div className="w-12 h-12 rounded-full border-2 border-[#741B2D] border-t-transparent animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-[0.2em] text-[#741B2D] font-bold">
           Verifying Management Credentials...
         </p>
       </main>
@@ -215,7 +215,7 @@ export default function AdminPage() {
 
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-[#1F070C]">
+      <main className="min-h-screen bg-[#F8F9FA]">
         <AdminLoginGate
           onLoginSuccess={(user) => {
             setCurrentUser(user);
@@ -227,14 +227,14 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#2B0E14] text-[#F5EFEB] flex flex-col selection:bg-[#D4AF37] selection:text-[#2B0E14]">
+    <main className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col selection:bg-[#741B2D] selection:text-white">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-2xl bg-[#381018] border border-[#E5C378] text-white shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
-          <span className="text-xs font-semibold text-[#E5C378]">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-900 shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+          <span className="text-xs font-semibold text-[#741B2D]">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="text-white/60 hover:text-white text-xs cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
           >
             ✕
           </button>
@@ -258,8 +258,8 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-12">
         {loading || !kpis ? (
           <div className="py-24 text-center">
-            <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mx-auto mb-4" />
-            <p className="text-sm text-white/70">Connecting to Burgundy Command Center...</p>
+            <div className="w-12 h-12 rounded-full border-2 border-[#741B2D] border-t-transparent animate-spin mx-auto mb-4" />
+            <p className="text-sm text-slate-600 font-medium">Connecting to Burgundy Command Center...</p>
           </div>
         ) : (
           <>
