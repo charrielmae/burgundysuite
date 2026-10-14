@@ -124,3 +124,75 @@ export async function batchCloudflareD1(
 
   return data.result;
 }
+
+/**
+ * Perform a live probe test against Cloudflare D1
+ */
+export async function testCloudflareD1Connection(): Promise<{
+  connected: boolean;
+  configured: boolean;
+  message: string;
+  missingConfig?: string[];
+  tables?: string[];
+  serverUtc?: string;
+  counts?: Record<string, number>;
+}> {
+  const { accountId, databaseId, apiToken } = getCloudflareD1Config();
+  const missing: string[] = [];
+  if (!accountId || !accountId.trim()) missing.push('CLOUDFLARE_ACCOUNT_ID');
+  if (!databaseId || !databaseId.trim()) missing.push('CLOUDFLARE_DATABASE_ID');
+  if (!apiToken || !apiToken.trim()) missing.push('CLOUDFLARE_API_TOKEN');
+
+  if (missing.length > 0) {
+    return {
+      connected: false,
+      configured: false,
+      message: `Cloudflare D1 is not configured. Missing variables in .env.local: ${missing.join(', ')}`,
+      missingConfig: missing,
+    };
+  }
+
+  try {
+    // 1. Basic Ping Query
+    const ping = await queryCloudflareD1<{ live_ping: number; cloudflare_utc: string }>(
+      `SELECT 1 as live_ping, datetime('now') as cloudflare_utc;`
+    );
+
+    const serverUtc = ping.results?.[0]?.cloudflare_utc;
+
+    // 2. Discover tables
+    const tableQuery = await queryCloudflareD1<{ name: string }>(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_cf_%' ORDER BY name;`
+    );
+    const tables = tableQuery.results.map((t) => t.name);
+
+    // 3. Optional quick row counts
+    const counts: Record<string, number> = {};
+    for (const tbl of tables) {
+      try {
+        const countQuery = await queryCloudflareD1<{ cnt: number }>(
+          `SELECT COUNT(*) as cnt FROM ${tbl};`
+        );
+        counts[tbl] = countQuery.results?.[0]?.cnt ?? 0;
+      } catch {
+        // ignore individual table count error
+      }
+    }
+
+    return {
+      connected: true,
+      configured: true,
+      message: `Successfully connected to Cloudflare D1 Database! (${tables.length} tables found)`,
+      tables,
+      serverUtc,
+      counts,
+    };
+  } catch (err) {
+    return {
+      connected: false,
+      configured: true,
+      message: `Failed connecting to Cloudflare D1: ${(err as Error).message}`,
+    };
+  }
+}
+

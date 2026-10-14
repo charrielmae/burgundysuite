@@ -48,7 +48,7 @@ CREATE TABLE GUEST_DETAILS (
 -- 4. ROOM_TYPE_DETAILS
 CREATE TABLE ROOM_TYPE_DETAILS (
     room_type_id INTEGER PRIMARY KEY,
-    room_type VARCHAR(20) NOT NULL CHECK(room_type IN ('Deluxe Suite', 'Executive King', 'Presidential Suite', 'Penthouse Haven')),
+    room_type VARCHAR(100) NOT NULL,
     room_capacity INTEGER NOT NULL,
     rate_per_night DECIMAL(10,2) NOT NULL
 );
