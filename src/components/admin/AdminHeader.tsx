@@ -10,6 +10,7 @@ import {
   ExternalLink,
   LogOut,
   ShieldCheck,
+  Plus,
 } from 'lucide-react';
 import { AuthenticatedAdmin } from '@/lib/db';
 
@@ -17,6 +18,7 @@ interface AdminHeaderProps {
   onSimulateCheckouts: () => void;
   onExportReport: () => void;
   onResetData: () => void;
+  onOpenAddSuite?: () => void;
   pendingCheckoutsCount: number;
   currentUser?: AuthenticatedAdmin | null;
   onLogout?: () => void;
@@ -26,6 +28,7 @@ export default function AdminHeader({
   onSimulateCheckouts,
   onExportReport,
   onResetData,
+  onOpenAddSuite,
   pendingCheckoutsCount,
   currentUser,
   onLogout,
@@ -80,6 +83,17 @@ export default function AdminHeader({
 
         {/* Right Side: Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Add Suite / Room Button */}
+          {onOpenAddSuite && (
+            <button
+              onClick={onOpenAddSuite}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-wide uppercase bg-emerald-600 hover:bg-emerald-700 text-white transition-all cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Suite</span>
+            </button>
+          )}
+
           {/* Simulate Due Checkouts Button */}
           <button
             onClick={onSimulateCheckouts}

@@ -2,14 +2,19 @@
 
 import React, { useState } from 'react';
 import { RoomWithDetails, RoomStatus } from '@/types/database';
-import { Bed, Users, Layers, CheckCircle, AlertCircle, Wrench } from 'lucide-react';
+import { Bed, Users, Layers, CheckCircle, AlertCircle, Wrench, Plus } from 'lucide-react';
 
 interface RoomInventoryGridProps {
   rooms: RoomWithDetails[];
   onStatusChange: (roomId: number, newStatus: RoomStatus) => Promise<void>;
+  onOpenAddSuite?: () => void;
 }
 
-export default function RoomInventoryGrid({ rooms, onStatusChange }: RoomInventoryGridProps) {
+export default function RoomInventoryGrid({
+  rooms,
+  onStatusChange,
+  onOpenAddSuite,
+}: RoomInventoryGridProps) {
   const [filter, setFilter] = useState<'all' | RoomStatus>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
@@ -68,48 +73,60 @@ export default function RoomInventoryGrid({ rooms, onStatusChange }: RoomInvento
           </p>
         </div>
 
-        {/* Tab Filters */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              filter === 'all'
-                ? 'bg-white text-slate-900 font-bold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            All ({rooms.length})
-          </button>
-          <button
-            onClick={() => setFilter('available')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              filter === 'available'
-                ? 'bg-white text-emerald-700 font-bold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Available ({availableCount})
-          </button>
-          <button
-            onClick={() => setFilter('occupied')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              filter === 'occupied'
-                ? 'bg-white text-rose-700 font-bold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Occupied ({occupiedCount})
-          </button>
-          <button
-            onClick={() => setFilter('maintenance')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
-              filter === 'maintenance'
-                ? 'bg-white text-amber-700 font-bold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Maintenance ({maintenanceCount})
-          </button>
+        {/* Right: Tab Filters & Add Suite Button */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'all'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All ({rooms.length})
+            </button>
+            <button
+              onClick={() => setFilter('available')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'available'
+                  ? 'bg-white text-emerald-700 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Available ({availableCount})
+            </button>
+            <button
+              onClick={() => setFilter('occupied')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'occupied'
+                  ? 'bg-white text-rose-700 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Occupied ({occupiedCount})
+            </button>
+            <button
+              onClick={() => setFilter('maintenance')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
+                filter === 'maintenance'
+                  ? 'bg-white text-amber-700 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Maintenance ({maintenanceCount})
+            </button>
+          </div>
+
+          {onOpenAddSuite && (
+            <button
+              onClick={onOpenAddSuite}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" />
+              <span>Add Suite</span>
+            </button>
+          )}
         </div>
       </div>
 

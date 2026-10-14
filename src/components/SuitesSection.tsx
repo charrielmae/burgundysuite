@@ -27,8 +27,8 @@ export default function SuitesSection({ roomTypes, onBookSuite }: SuitesSectionP
           </p>
         </div>
 
-        {/* 4-Card Luxury Grid (Matches Screenshot 3) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
+        {/* Luxury Accommodations Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-7">
           {roomTypes.map((suite) => (
             <div
               key={suite.room_type_id}

@@ -43,13 +43,23 @@ export interface GuestDetails {
 // 4. ROOM_TYPE_DETAILS
 export interface RoomTypeDetails {
   room_type_id: number;
-  room_type: RoomType;
+  room_type: string;
   room_capacity: number;
   rate_per_night: number;
   description?: string;
   image_url?: string;
   badge?: string;
   features?: string[];
+}
+
+export interface NewRoomTypeRequest {
+  room_type: string;
+  room_capacity: number;
+  rate_per_night: number;
+  description: string;
+  image_url: string;
+  badge?: string;
+  features: string[];
 }
 
 // 5. ROOM_DETAILS
@@ -85,7 +95,7 @@ export interface PaymentDetails {
 
 // Joined / Composite Views for Application Surfaces
 export interface RoomWithDetails extends RoomDetails {
-  room_type: RoomType;
+  room_type: string;
   room_capacity: number;
   rate_per_night: number;
   image_url: string;

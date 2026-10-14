@@ -9,6 +9,7 @@ import AdminChart from '@/components/admin/AdminChart';
 import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
 import BookingsTable from '@/components/admin/BookingsTable';
 import PaymentLogs from '@/components/admin/PaymentLogs';
+import AddSuiteModal from '@/components/admin/AddSuiteModal';
 import Footer from '@/components/Footer';
 import {
   AdminKPIs as AdminKPIsType,
@@ -27,6 +28,7 @@ export default function AdminPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isAddSuiteOpen, setIsAddSuiteOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -248,6 +250,7 @@ export default function AdminPage() {
       <AdminHeader
         currentUser={currentUser}
         onLogout={handleLogout}
+        onOpenAddSuite={() => setIsAddSuiteOpen(true)}
         onSimulateCheckouts={handleSimulateCheckouts}
         onExportReport={handleExportReport}
         onResetData={handleResetData}
@@ -273,6 +276,7 @@ export default function AdminPage() {
             <RoomInventoryGrid
               rooms={rooms}
               onStatusChange={handleRoomStatusChange}
+              onOpenAddSuite={() => setIsAddSuiteOpen(true)}
             />
 
             {/* 4. Reservations & Guest Bookings Table */}
@@ -294,6 +298,16 @@ export default function AdminPage() {
           <span className="text-[11px] text-slate-400">DBMS Schema Compliant • Cloudflare D1 / SQLite</span>
         </div>
       </footer>
+
+      {/* Add New Room / Suite Modal */}
+      <AddSuiteModal
+        isOpen={isAddSuiteOpen}
+        onClose={() => setIsAddSuiteOpen(false)}
+        onSuccess={(suiteName) => {
+          showToast(`Suite "${suiteName}" published successfully! Available immediately in Guest Portal.`);
+          loadData();
+        }}
+      />
     </main>
   );
 }

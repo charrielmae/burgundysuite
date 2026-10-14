@@ -17,6 +17,7 @@ import {
   BookingWithDetails,
   AdminKPIs,
   NewBookingRequest,
+  NewRoomTypeRequest,
   RoomStatus,
 } from '@/types/database';
 
@@ -361,24 +362,86 @@ export function getRoomTypes(): RoomTypeDetails[] {
   return db.ROOM_TYPE_DETAILS;
 }
 
+export async function createRoomType(
+  req: NewRoomTypeRequest
+): Promise<{ roomType: RoomTypeDetails; room: RoomDetails }> {
+  const db = readDb();
+
+  const newTypeId = Math.max(...db.ROOM_TYPE_DETAILS.map((t) => t.room_type_id), 0) + 1;
+  const newType: RoomTypeDetails = {
+    room_type_id: newTypeId,
+    room_type: req.room_type,
+    room_capacity: Number(req.room_capacity),
+    rate_per_night: Number(req.rate_per_night),
+    description: req.description,
+    image_url:
+      req.image_url ||
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+    badge: req.badge || `Up to ${req.room_capacity} Guests`,
+    features:
+      req.features && req.features.length > 0
+        ? req.features
+        : ['Coastal Balcony', 'King Plush Bed', 'Artisanal Mini Bar'],
+  };
+
+  db.ROOM_TYPE_DETAILS.push(newType);
+
+  // Automatically create a physical room for this suite type in ROOM_DETAILS
+  const newRoomId = Math.max(...db.ROOM_DETAILS.map((r) => r.room_id), 0) + 1;
+  const floorNumber = Math.min(Math.floor(newRoomId / 2) + 1, 6);
+  const roomNumber = floorNumber * 100 + (newRoomId % 2 === 0 ? 2 : 1);
+
+  const newRoom: RoomDetails = {
+    room_id: newRoomId,
+    room_type_id: newTypeId,
+    room_number: roomNumber,
+    floor_number: floorNumber,
+    room_status: 'available',
+  };
+
+  db.ROOM_DETAILS.push(newRoom);
+  saveDb(db);
+
+  // Sync to Cloudflare D1 if configured
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `INSERT OR REPLACE INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night) VALUES (?, ?, ?, ?);`,
+          params: [newType.room_type_id, newType.room_type, newType.room_capacity, newType.rate_per_night],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO ROOM_DETAILS (room_id, room_type_id, room_number, floor_number, room_status) VALUES (?, ?, ?, ?, 'available');`,
+          params: [newRoom.room_id, newRoom.room_type_id, newRoom.room_number, newRoom.floor_number],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Created new suite #${newTypeId} and room #${newRoomId}`);
+    } catch (d1Err) {
+      console.error('[Cloudflare D1 createRoomType sync error]:', d1Err);
+    }
+  }
+
+  return { roomType: newType, room: newRoom };
+}
+
 export function getRooms(): RoomWithDetails[] {
   const db = readDb();
   return db.ROOM_DETAILS.map((room) => {
     const type = db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === room.room_type_id);
     const meta = ROOM_METADATA[room.room_type_id] || {
-      image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
-      description: 'Luxury coastal accommodation with first-class amenities.',
-      features: ['Air Conditioning', 'Plush Bedding', 'Ocean Ambience'],
-      badge: 'Luxury Suite',
+      image_url: type?.image_url || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+      description: type?.description || 'Luxury coastal accommodation with first-class amenities.',
+      features: type?.features || ['Air Conditioning', 'Plush Bedding', 'Ocean Ambience'],
+      badge: type?.badge || 'Luxury Suite',
     };
     return {
       ...room,
       room_type: type?.room_type || 'Deluxe Suite',
       room_capacity: type?.room_capacity || 2,
       rate_per_night: type?.rate_per_night || 250,
-      image_url: meta.image_url,
-      description: meta.description,
-      features: meta.features,
+      image_url: type?.image_url || meta.image_url,
+      description: type?.description || meta.description,
+      features: type?.features || meta.features,
     };
   });
 }

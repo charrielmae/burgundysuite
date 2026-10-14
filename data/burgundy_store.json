@@ -185,6 +185,20 @@
         "Private Elevator Keycard",
         "360° Glass Ocean View"
       ]
+    },
+    {
+      "room_type_id": 5,
+      "room_type": "Oceanview Sunset Villa",
+      "room_capacity": 4,
+      "rate_per_night": 550,
+      "description": "Secluded seaside villa with private infinity plunge pool, oceanview sunset deck, and butler service.",
+      "image_url": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80",
+      "badge": "Up to 4 Guests",
+      "features": [
+        "Private Plunge Pool",
+        "Panoramic Sunset Deck",
+        "24/7 Butler Service"
+      ]
     }
   ],
   "ROOM_DETAILS": [
@@ -229,6 +243,13 @@
       "room_number": 401,
       "floor_number": 4,
       "room_status": "available"
+    },
+    {
+      "room_id": 7,
+      "room_type_id": 5,
+      "room_number": 401,
+      "floor_number": 4,
+      "room_status": "available"
     }
   ],
   "ROOM_BOOKING": [
@@ -240,7 +261,7 @@
       "check_in_date": "2026-10-12",
       "check_out_date": "2026-10-14",
       "total_amount": 500,
-      "booking_status": "checked-in"
+      "booking_status": "completed"
     },
     {
       "booking_id": 1002,
