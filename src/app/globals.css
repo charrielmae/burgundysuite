@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: var(--font-serif), Georgia, serif;
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+
+  --color-burgundy-950: #1a080c;
+  --color-burgundy-900: #2b0e14;
+  --color-burgundy-850: #381018;
+  --color-burgundy-800: #4a1521;
+  --color-burgundy-700: #5a1c2a;
+  --color-burgundy-600: #742537;
+  --color-burgundy-100: #f3e8e9;
+  --color-burgundy-50: #fbf5f5;
+
+  --color-gold-600: #b8932c;
+  --color-gold-500: #c5a059;
+  --color-gold-400: #d4af37;
+  --color-gold-300: #e5c378;
+  --color-gold-200: #f3d698;
+  --color-gold-100: #f9eed4;
+}
+
+:root {
+  --bg-primary: #2B0E14;
+  --bg-header: #381018;
+  --bg-card: #4A1521;
+  --bg-sand: #FBF5F5;
+  --gold-accent: #D4AF37;
+  --gold-warm: #E5C378;
+}
+
+/* Custom Scrollbar for Luxury Feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1a080c;
+}
+::-webkit-scrollbar-thumb {
+  background: #5a1c2a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4af37;
+}
+
+/* Glassmorphism and ambient glow utilities */
+.glass-burgundy {
+  background: rgba(56, 16, 24, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 195, 120, 0.15);
+}
+
+.glass-card {
+  background: rgba(74, 21, 33, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(90, 28, 42, 0.6);
+}
+
+.gold-glow {
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.25);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #FFF6D6 0%, #D4AF37 50%, #B8932C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bar {
+  background: linear-gradient(180deg, #E5C378 0%, #C5A059 40%, #742537 100%);
+}
+
+.hero-gradient-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(43, 14, 20, 0.75) 0%,
+    rgba(56, 16, 24, 0.65) 50%,
+    rgba(43, 14, 20, 0.95) 100%
+  );
+}

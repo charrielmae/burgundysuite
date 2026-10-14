@@ -1,0 +1,234 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import Navbar from '@/components/Navbar';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminKPIs from '@/components/admin/AdminKPIs';
+import AdminChart from '@/components/admin/AdminChart';
+import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
+import BookingsTable from '@/components/admin/BookingsTable';
+import PaymentLogs from '@/components/admin/PaymentLogs';
+import Footer from '@/components/Footer';
+import {
+  AdminKPIs as AdminKPIsType,
+  RoomWithDetails,
+  BookingWithDetails,
+  RoomStatus,
+} from '@/types/database';
+
+export default function AdminPage() {
+  const [kpis, setKpis] = useState<AdminKPIsType | null>(null);
+  const [rooms, setRooms] = useState<RoomWithDetails[]>([]);
+  const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 5000);
+  };
+
+  const loadData = useCallback(async () => {
+    try {
+      const [kpiRes, roomRes, bookingRes, payRes] = await Promise.all([
+        fetch('/api/admin/metrics'),
+        fetch('/api/rooms'),
+        fetch('/api/bookings?filter=all'),
+        fetch('/api/payments'),
+      ]);
+
+      const [kpiData, roomData, bookingData, payData] = await Promise.all([
+        kpiRes.json(),
+        roomRes.json(),
+        bookingRes.json(),
+        payRes.json(),
+      ]);
+
+      if (kpiData.success) setKpis(kpiData.data);
+      if (roomData.success) setRooms(roomData.data);
+      if (bookingData.success) setBookings(bookingData.data);
+      if (payData.success) setPayments(payData.data);
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
+      showToast('Error refreshing command center metrics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Handle Room Status Change
+  const handleRoomStatusChange = async (roomId: number, newStatus: RoomStatus) => {
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error);
+
+      showToast(`Room #${roomId} status updated to ${newStatus.toUpperCase()}`);
+      await loadData();
+    } catch (err) {
+      showToast(`Failed to update room: ${(err as Error).message}`);
+    }
+  };
+
+  // Handle Process Check-out
+  const handleProcessCheckout = async (bookingId: number) => {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/checkout`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error);
+
+      showToast(data.message || `Booking #${bookingId} checked out successfully.`);
+      await loadData();
+    } catch (err) {
+      showToast(`Check-out failed: ${(err as Error).message}`);
+    }
+  };
+
+  // Simulate Due Checkouts
+  const handleSimulateCheckouts = async () => {
+    try {
+      const res = await fetch('/api/admin/simulate-checkout', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error);
+
+      showToast(data.message || 'Simulated checkout executed successfully.');
+      await loadData();
+    } catch (err) {
+      showToast(`Simulation failed: ${(err as Error).message}`);
+    }
+  };
+
+  // Reset to default seed
+  const handleResetData = async () => {
+    if (!confirm('Reset database to original default seed data? All custom test records will be refreshed.')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/reset', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error);
+
+      showToast('Database reset to original benchmark state.');
+      await loadData();
+    } catch (err) {
+      showToast(`Reset failed: ${(err as Error).message}`);
+    }
+  };
+
+  // Export CSV Report
+  const handleExportReport = () => {
+    if (!kpis) return;
+
+    let csv = `BURGUNDY SUITE & RESORT - EXECUTIVE WEEKLY MANAGEMENT REPORT\n`;
+    csv += `Export Date,${new Date().toISOString()}\n`;
+    csv += `Total Revenue,₱${kpis.total_revenue.toFixed(2)}\n`;
+    csv += `Occupancy Rate,${kpis.occupancy_rate_percent}%\n`;
+    csv += `Occupied Rooms,${kpis.occupied_rooms_count}/${kpis.total_rooms_count}\n`;
+    csv += `Pending Checkouts Today,${kpis.pending_checkouts_today_count}\n`;
+    csv += `Average Stay Duration,${kpis.avg_stay_duration_nights} Nights\n\n`;
+
+    csv += `--- ROOM INVENTORY ---\n`;
+    csv += `Room Number,Floor,Category,Nightly Rate,Status\n`;
+    rooms.forEach((r) => {
+      csv += `${r.room_number},${r.floor_number},"${r.room_type}",₱${r.rate_per_night},${r.room_status}\n`;
+    });
+
+    csv += `\n--- ACTIVE & RECENT BOOKINGS ---\n`;
+    csv += `Booking ID,Guest Name,Email,Room Number,Check-In,Check-Out,Total Amount,Status\n`;
+    bookings.forEach((b) => {
+      csv += `#${b.booking_id},"${b.guest.first_name} ${b.guest.last_name}",${b.guest.email_address},${b.room.room_number},${b.check_in_date},${b.check_out_date},₱${b.total_amount},${b.booking_status}\n`;
+    });
+
+    csv += `\n--- PAYMENT AUDIT LOG ---\n`;
+    csv += `Payment ID,Booking Ref,Guest Name,Method,Amount,Status,Timestamp\n`;
+    payments.forEach((p) => {
+      csv += `#PAY-${p.payment_id},#BSR-${p.booking_id},"${p.guest_name}","${p.payment_method}",₱${p.amount},${p.payment_status},"${p.payment_date || ''}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Burgundy_Suite_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast('Weekly Management Report exported as CSV.');
+  };
+
+  return (
+    <main className="min-h-screen bg-[#2B0E14] text-[#F5EFEB] flex flex-col selection:bg-[#D4AF37] selection:text-[#2B0E14]">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-2xl bg-[#381018] border border-[#E5C378] text-white shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+          <span className="text-xs font-semibold text-[#E5C378]">{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-white/60 hover:text-white text-xs cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Global Navbar */}
+      <Navbar />
+
+      {/* Admin Header with Actions */}
+      <AdminHeader
+        onSimulateCheckouts={handleSimulateCheckouts}
+        onExportReport={handleExportReport}
+        onResetData={handleResetData}
+        pendingCheckoutsCount={kpis?.pending_checkouts_today_count || 0}
+      />
+
+      {/* Main Command Center Body */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+        {loading || !kpis ? (
+          <div className="py-24 text-center">
+            <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mx-auto mb-4" />
+            <p className="text-sm text-white/70">Connecting to Burgundy Command Center...</p>
+          </div>
+        ) : (
+          <>
+            {/* 1. Key Metric KPI Cards (Screenshot 4) */}
+            <AdminKPIs kpis={kpis} />
+
+            {/* 2. Weekly Performance & Revenue Chart (Screenshot 4) */}
+            <AdminChart data={kpis.weekly_performance_chart} />
+
+            {/* 3. Room Availability & Inventory Grid */}
+            <RoomInventoryGrid
+              rooms={rooms}
+              onStatusChange={handleRoomStatusChange}
+            />
+
+            {/* 4. Reservations & Guest Bookings Table */}
+            <BookingsTable
+              bookings={bookings}
+              onCheckOut={handleProcessCheckout}
+            />
+
+            {/* 5. Payment Transaction Logs */}
+            <PaymentLogs payments={payments} />
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <Footer />
+    </main>
+  );
+}
