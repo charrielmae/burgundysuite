@@ -81,20 +81,18 @@ export default function AdminChart({ data }: AdminChartProps) {
                 {/* Gold Gradient Bar Plate */}
                 <div
                   style={{ height: `${heightPercent}%` }}
-                  className={`w-full max-w-[80px] rounded-t-xl transition-all duration-300 relative overflow-hidden ${
-                    isHovered
+                  className={`w-full max-w-[80px] rounded-t-xl transition-all duration-300 relative overflow-hidden ${isHovered
                       ? 'bg-gradient-to-t from-[#5A1C2A] via-[#E5C378] to-[#FFF6D6] shadow-[0_0_20px_rgba(229,195,120,0.5)] scale-[1.02]'
                       : 'bg-gradient-to-t from-[#4A1521] via-[#C5A059] to-[#E5C378]'
-                  }`}
+                    }`}
                 >
                   <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Day Label */}
                 <span
-                  className={`mt-3 text-xs font-semibold transition-colors ${
-                    isHovered ? 'text-[#E5C378]' : 'text-white/60'
-                  }`}
+                  className={`mt-3 text-xs font-semibold transition-colors ${isHovered ? 'text-[#E5C378]' : 'text-white/60'
+                    }`}
                 >
                   {item.day}
                 </span>

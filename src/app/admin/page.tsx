@@ -287,8 +287,13 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Footer */}
-      <Footer />
+      {/* Admin Clean Footer */}
+      <footer className="mt-auto border-t border-slate-200 bg-white py-6 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>© 2026 Burgundy Suite & Resort — Executive Management Console</span>
+          <span className="text-[11px] text-slate-400">DBMS Schema Compliant • Cloudflare D1 / SQLite</span>
+        </div>
+      </footer>
     </main>
   );
 }
