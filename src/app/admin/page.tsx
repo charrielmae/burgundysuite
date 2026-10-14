@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import AdminHeader from '@/components/admin/AdminHeader';
+import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import AdminKPIs from '@/components/admin/AdminKPIs';
 import AdminChart from '@/components/admin/AdminChart';
 import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
@@ -15,8 +16,11 @@ import {
   BookingWithDetails,
   RoomStatus,
 } from '@/types/database';
+import { AuthenticatedAdmin } from '@/lib/db';
 
 export default function AdminPage() {
+  const [currentUser, setCurrentUser] = useState<AuthenticatedAdmin | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [kpis, setKpis] = useState<AdminKPIsType | null>(null);
   const [rooms, setRooms] = useState<RoomWithDetails[]>([]);
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
@@ -31,6 +35,7 @@ export default function AdminPage() {
 
   const loadData = useCallback(async () => {
     try {
+      setLoading(true);
       const [kpiRes, roomRes, bookingRes, payRes] = await Promise.all([
         fetch('/api/admin/metrics'),
         fetch('/api/rooms'),
@@ -57,9 +62,38 @@ export default function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
+  const checkAuth = useCallback(async () => {
+    try {
+      setAuthLoading(true);
+      const res = await fetch('/api/auth/me');
+      const data = await res.json();
+      if (data.authenticated && data.data) {
+        setCurrentUser(data.data);
+        await loadData();
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (err) {
+      console.error('Auth verification failed:', err);
+      setCurrentUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
   }, [loadData]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setCurrentUser(null);
+      showToast('Successfully logged out of Admin Command Center.');
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
 
   // Handle Room Status Change
   const handleRoomStatusChange = async (roomId: number, newStatus: RoomStatus) => {
@@ -168,6 +202,30 @@ export default function AdminPage() {
     showToast('Weekly Management Report exported as CSV.');
   };
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-[#1F070C] flex flex-col items-center justify-center text-white">
+        <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-[0.2em] text-[#E5C378]">
+          Verifying Management Credentials...
+        </p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <main className="min-h-screen bg-[#1F070C]">
+        <AdminLoginGate
+          onLoginSuccess={(user) => {
+            setCurrentUser(user);
+            loadData();
+          }}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#2B0E14] text-[#F5EFEB] flex flex-col selection:bg-[#D4AF37] selection:text-[#2B0E14]">
       {/* Toast Alert */}
@@ -186,8 +244,10 @@ export default function AdminPage() {
       {/* Global Navbar */}
       <Navbar />
 
-      {/* Admin Header with Actions */}
+      {/* Admin Header with Actions & Current User Session */}
       <AdminHeader
+        currentUser={currentUser}
+        onLogout={handleLogout}
         onSimulateCheckouts={handleSimulateCheckouts}
         onExportReport={handleExportReport}
         onResetData={handleResetData}

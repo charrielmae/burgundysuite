@@ -51,9 +51,10 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
               <button
                 onClick={onOpenMyBookings}
                 className="flex items-center gap-1.5 hover:text-[#E5C378] transition-colors cursor-pointer text-[#E5C378]"
+                title="Verify your suite reservation with your email address"
               >
                 <BookmarkCheck className="w-3.5 h-3.5" />
-                <span>My Bookings</span>
+                <span>Verify Booking</span>
               </button>
             )}
           </nav>

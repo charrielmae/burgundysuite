@@ -10,13 +10,18 @@ import {
   RotateCcw,
   PlusCircle,
   ExternalLink,
+  LogOut,
+  UserCheck,
 } from 'lucide-react';
+import { AuthenticatedAdmin } from '@/lib/db';
 
 interface AdminHeaderProps {
   onSimulateCheckouts: () => void;
   onExportReport: () => void;
   onResetData: () => void;
   pendingCheckoutsCount: number;
+  currentUser?: AuthenticatedAdmin | null;
+  onLogout?: () => void;
 }
 
 export default function AdminHeader({
@@ -24,6 +29,8 @@ export default function AdminHeader({
   onExportReport,
   onResetData,
   pendingCheckoutsCount,
+  currentUser,
+  onLogout,
 }: AdminHeaderProps) {
   return (
     <header className="w-full bg-[#2B0E14] border-b border-[#5A1C2A] py-6 px-4 sm:px-6 lg:px-8">
@@ -41,6 +48,32 @@ export default function AdminHeader({
 
         {/* Portal Switcher & Action Controls */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Active Admin Profile Pill with Logout */}
+          {currentUser && (
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#1A080C] border border-[#5A1C2A] shadow-inner">
+              <div className="w-6 h-6 rounded-full bg-[#5A1C2A] text-[#E5C378] text-[10px] font-bold flex items-center justify-center border border-[#E5C378]/30">
+                {currentUser.first_name[0]}
+              </div>
+              <div className="text-left text-xs">
+                <span className="font-semibold text-white block leading-none">
+                  {currentUser.first_name} {currentUser.last_name}
+                </span>
+                <span className="text-[10px] text-[#E5C378]/80 block leading-tight mt-0.5">
+                  {currentUser.position}
+                </span>
+              </div>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Log Out"
+                  className="ml-1 p-1.5 rounded-full bg-[#2B0E14] hover:bg-rose-950 text-white/50 hover:text-rose-300 border border-[#5A1C2A] hover:border-rose-800 transition-colors cursor-pointer flex items-center gap-1 text-[10px] px-2"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Logout</span>
+                </button>
+              )}
+            </div>
+          )}
           {/* Switcher Pill */}
           <div className="flex items-center p-1 rounded-full bg-[#1A080C] border border-[#5A1C2A]">
             <Link

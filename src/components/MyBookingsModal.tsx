@@ -45,9 +45,14 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
         <div className="px-6 py-5 bg-[#381018] border-b border-[#5A1C2A] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <BookmarkCheck className="w-5 h-5 text-[#E5C378]" />
-            <h3 className="font-serif text-lg font-bold text-white tracking-wide">
-              Guest Reservation Lookup
-            </h3>
+            <div>
+              <h3 className="font-serif text-lg font-bold text-white tracking-wide">
+                Guest Booking Verification
+              </h3>
+              <p className="text-[11px] text-white/60">
+                Verify your suite reservation with your registered email address.
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -60,9 +65,12 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
         {/* Content */}
         <div className="p-6 space-y-6">
           <form onSubmit={handleSearch} className="space-y-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#E5C378] block">
-              Enter Guest Email Address
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#E5C378] block">
+                Your Booking Gmail / Email Address
+              </label>
+              <span className="text-[10px] text-white/50">No password required</span>
+            </div>
             <div className="flex gap-2">
               <input
                 type="email"
@@ -78,13 +86,13 @@ export default function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProp
                 className="px-5 py-2.5 rounded-xl bg-[#E5C378] text-[#2B0E14] text-xs font-bold uppercase tracking-wider hover:bg-[#D4AF37] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Search className="w-4 h-4" />
-                <span>{loading ? 'Searching...' : 'Search'}</span>
+                <span>{loading ? 'Verifying...' : 'Verify'}</span>
               </button>
             </div>
 
             {/* Quick Demo Links */}
             <div className="flex items-center gap-2 text-[11px] text-white/60 pt-1">
-              <span>Quick lookup:</span>
+              <span>Quick verify:</span>
               <button
                 type="button"
                 onClick={() => {

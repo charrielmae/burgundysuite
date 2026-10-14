@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   ShieldCheck,
   Building,
+  BookmarkCheck,
 } from 'lucide-react';
 import { RoomTypeDetails, NewBookingRequest, BookingWithDetails } from '@/types/database';
 
@@ -635,6 +636,14 @@ export default function ReservationModal({
                   <span>Total Amount Paid:</span>
                   <span>₱{confirmedBooking.booking.total_amount.toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* Email Verification Reminder */}
+              <div className="p-3.5 rounded-xl bg-[#2B0E14] border border-[#E5C378]/30 text-left text-xs flex items-center gap-2.5">
+                <BookmarkCheck className="w-4 h-4 shrink-0 text-[#E5C378]" />
+                <span className="text-[11px] text-white/80 leading-relaxed">
+                  <strong className="text-[#E5C378]">Guest Verification:</strong> You don&apos;t need an account or password! You can verify and check your suite details anytime under <strong className="text-white">Verify Booking</strong> on our homepage using <strong className="text-white">{email}</strong>.
+                </span>
               </div>
 
               <div className="flex items-center gap-3 justify-center pt-2">
