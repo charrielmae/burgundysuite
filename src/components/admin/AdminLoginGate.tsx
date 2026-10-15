@@ -53,7 +53,17 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#2B0E14] via-[#240A10] to-[#170509] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden text-[#F5EFEB]">
+    <div className="min-h-screen bg-[#2B0E14] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden text-[#F5EFEB]">
+      {/* Background Photography with Warm Dusk Ambient Lighting */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
+        style={{
+          backgroundImage: `url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2000&q=85')`,
+        }}
+      />
+
+      {/* Atmospheric Maroon Vignette & Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/90 via-[#381018]/85 to-[#170509]" />
       {/* Back to Guest Portal Link */}
       <div className="w-full max-w-md mb-6 flex justify-between items-center relative z-10">
         <Link

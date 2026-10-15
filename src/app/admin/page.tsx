@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeroBanner from '@/components/admin/AdminHeroBanner';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import AdminKPIs from '@/components/admin/AdminKPIs';
 import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
@@ -276,6 +277,9 @@ export default function AdminPage() {
         onOpenAccounts={() => setIsAccountsOpen(true)}
         onExportReport={handleExportReport}
       />
+
+      {/* Hero Visual Showcase: Coastal Luxury Background & Narrative */}
+      <AdminHeroBanner />
 
       {/* Main Command Center Body */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-12">
