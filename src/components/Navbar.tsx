@@ -106,7 +106,7 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
             {/* Reserve CTA */}
             <button
               onClick={() => (onOpenBooking ? onOpenBooking() : (window.location.href = '/#suites'))}
-              className="flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-[#D4AF37] to-[#E5C378] text-[#2B0E14] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer whitespace-nowrap"
+              className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-[#D4AF37] to-[#E5C378] text-[#2B0E14] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer whitespace-nowrap"
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Reserve Now</span>
@@ -212,6 +212,24 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
                   </span>
                 </button>
               )}
+              {/* Reserve Now CTA */}
+              <div className="pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleMobileNavClick();
+                    if (onOpenBooking) {
+                      onOpenBooking();
+                    } else {
+                      window.location.href = '/#suites';
+                    }
+                  }}
+                  className="w-full py-3 rounded-full text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-[#D4AF37] to-[#E5C378] text-[#2B0E14] shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Reserve Now</span>
+                </button>
+              </div>
             </nav>
           </div>
         </>
