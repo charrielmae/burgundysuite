@@ -79,14 +79,14 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
       <div className="w-full max-w-md bg-[#381018]/95 border border-[#5A1C2A] text-white rounded-3xl shadow-2xl p-8 relative z-10 backdrop-blur-md">
         {/* Emblem & Title */}
         <div className="text-center space-y-3 pb-6 border-b border-[#5A1C2A]/70">
-          <div className="relative w-20 h-20 rounded-3xl overflow-hidden border-2 border-[#E5C378]/50 mx-auto shadow-2xl">
+          <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#240A10] border-2 border-[#E5C378]/50 mx-auto shadow-2xl p-3 flex items-center justify-center">
             <Image
-              src="/burgundy_logo.png"
+              src="/burgundylogov2.png"
               alt="Burgundy Suite Logo"
               width={80}
               height={80}
               priority
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           <div>

@@ -168,13 +168,13 @@ export default function ReservationModal({
         {/* Modal Top Bar */}
         <div className="px-6 py-5 bg-[#381018] border-b border-[#5A1C2A] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-[#E5C378]/40 shadow-xs shrink-0">
+            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#240A10] border border-[#E5C378]/40 shadow-xs shrink-0 p-1 flex items-center justify-center">
               <Image
-                src="/burgundy_logo.png"
+                src="/burgundylogov2.png"
                 alt="Burgundy Suite Logo"
                 width={32}
                 height={32}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             <div>

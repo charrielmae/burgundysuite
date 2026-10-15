@@ -27,13 +27,13 @@ export default function AdminHeader({
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Left Side: Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#E5C378]/40 shadow-sm shrink-0">
+          <div className="relative w-9 h-9 rounded-full overflow-hidden bg-[#240A10] border border-[#E5C378]/40 shadow-sm shrink-0 p-1 flex items-center justify-center">
             <Image
-              src="/burgundy_logo.png"
+              src="/burgundylogov2.png"
               alt="Burgundy Suite Logo"
               width={36}
               height={36}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           <div>

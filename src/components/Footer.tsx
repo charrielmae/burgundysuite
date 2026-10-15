@@ -13,13 +13,13 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-2xl overflow-hidden border border-[#E5C378]/40 shadow-sm shrink-0">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#381018] border border-[#E5C378]/40 shadow-sm shrink-0 p-1.5 flex items-center justify-center">
                 <Image
-                  src="/burgundy_logo.png"
+                  src="/burgundylogov2.png"
                   alt="Burgundy Suite Logo"
                   width={40}
                   height={40}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="flex flex-col">
