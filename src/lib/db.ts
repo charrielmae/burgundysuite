@@ -1175,6 +1175,7 @@ export async function createStaffAccount(req: NewAccountRequest): Promise<StaffA
   return {
     ...newUser,
     ...newStaff,
+    user_role: (newUser.user_role === 'admin' ? 'admin' : 'staff') as 'admin' | 'staff',
   };
 }
 
@@ -1239,6 +1240,7 @@ export async function updateStaffAccount(req: UpdateAccountRequest): Promise<Sta
   return {
     ...user,
     ...staff,
+    user_role: (user.user_role === 'admin' ? 'admin' : 'staff') as 'admin' | 'staff',
   };
 }
 
