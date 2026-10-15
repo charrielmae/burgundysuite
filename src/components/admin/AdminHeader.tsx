@@ -22,7 +22,7 @@ export default function AdminHeader({
   onLogout,
 }: AdminHeaderProps) {
   return (
-    <header className="w-full bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8 shadow-xs sticky top-20 z-30">
+    <header className="w-full bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8 shadow-xs sticky top-0 z-30">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Left Side: Brand Logo & Title */}
         <div className="flex items-center gap-3">

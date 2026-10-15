@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Navbar from '@/components/Navbar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import AdminKPIs from '@/components/admin/AdminKPIs';
@@ -266,9 +265,6 @@ export default function AdminPage() {
           </button>
         </div>
       )}
-
-      {/* Global Navbar */}
-      <Navbar />
 
       {/* Admin Header with Actions & Current User Session */}
       <AdminHeader
