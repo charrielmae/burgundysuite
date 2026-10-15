@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       name: 'Burgundy Admin & Staff Credentials',
       credentials: {
-        username: { label: 'Username', type: 'text', placeholder: 'admin_clara' },
+        username: { label: 'Username', type: 'text', placeholder: 'Username' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {

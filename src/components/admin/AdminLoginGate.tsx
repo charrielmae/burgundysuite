@@ -8,7 +8,6 @@ import {
   Lock,
   User,
   ArrowRight,
-  Sparkles,
   Info,
   ArrowLeft,
   KeyRound,
@@ -20,8 +19,8 @@ interface AdminLoginGateProps {
 }
 
 export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) {
-  const [username, setUsername] = useState('admin_clara');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,12 +50,6 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setError(null);
   };
 
   return (
@@ -136,7 +129,7 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin_clara or staff_vincent"
+                placeholder="Enter username"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#240A10] border border-[#5A1C2A] text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-[#E5C378] transition-colors"
               />
             </div>
@@ -175,36 +168,6 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
             )}
           </button>
         </form>
-
-        {/* Quick Demo Credentials */}
-        <div className="mt-6 pt-5 border-t border-[#5A1C2A]/70">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#E5C378]/80 font-semibold mb-2.5">
-            <Sparkles className="w-3 h-3 text-[#E5C378]" />
-            <span>1-Click Test Credentials</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin_clara', 'admin123')}
-              className="p-2.5 rounded-xl bg-[#240A10] hover:bg-[#2B0E14] border border-[#5A1C2A] hover:border-[#E5C378]/40 text-left transition-colors cursor-pointer group"
-            >
-              <div className="font-semibold text-white group-hover:text-[#E5C378] text-[11px]">
-                Clara Montague
-              </div>
-              <div className="text-[10px] text-white/50">Admin (GM)</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('staff_vincent', 'admin123')}
-              className="p-2.5 rounded-xl bg-[#240A10] hover:bg-[#2B0E14] border border-[#5A1C2A] hover:border-[#E5C378]/40 text-left transition-colors cursor-pointer group"
-            >
-              <div className="font-semibold text-white group-hover:text-[#E5C378] text-[11px]">
-                Vincent Moreau
-              </div>
-              <div className="text-[10px] text-white/50">Staff (Concierge)</div>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
