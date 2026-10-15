@@ -5,7 +5,6 @@ import Navbar from '@/components/Navbar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import AdminKPIs from '@/components/admin/AdminKPIs';
-import AdminChart from '@/components/admin/AdminChart';
 import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
 import BookingsTable from '@/components/admin/BookingsTable';
 import PaymentLogs from '@/components/admin/PaymentLogs';
@@ -291,10 +290,7 @@ export default function AdminPage() {
             {/* 1. Key Metric KPI Cards (Screenshot 4) */}
             <AdminKPIs kpis={kpis} />
 
-            {/* 2. Weekly Performance & Revenue Chart (Screenshot 4) */}
-            <AdminChart data={kpis.weekly_performance_chart} />
-
-            {/* 3. Room Availability & Inventory Grid */}
+            {/* 2. Room Availability & Inventory Grid */}
             <RoomInventoryGrid
               rooms={rooms}
               onStatusChange={handleRoomStatusChange}
