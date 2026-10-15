@@ -563,31 +563,51 @@ export async function createBooking(req: NewBookingRequest): Promise<{ booking: 
     db.ROOM_DETAILS.find((r) => r.room_status === 'available') ||
     db.ROOM_DETAILS[0];
 
-  // 1. Create USER_ACCOUNT for guest
-  const newUserId = Math.max(...db.USER_ACCOUNT.map((u) => u.user_id), 0) + 1;
-  const username = `guest_${req.guest_first_name.toLowerCase()}_${Date.now().toString().slice(-4)}`;
-  db.USER_ACCOUNT.push({
-    user_id: newUserId,
-    user_name: username,
-    password_hash: '$argon2id$guest_session_hash',
-    user_role: 'guest',
-    acc_status: 'active',
-    created_date: new Date().toISOString(),
-  });
+  // 1. Find existing or create new USER_ACCOUNT & GUEST_DETAILS
+  const normalizedEmail = req.guest_email.trim().toLowerCase();
+  const existingGuest = db.GUEST_DETAILS.find(
+    (g) => g.email_address.trim().toLowerCase() === normalizedEmail
+  );
 
-  // 2. Create GUEST_DETAILS
-  const guest: GuestDetails = {
-    user_id: newUserId,
-    first_name: req.guest_first_name,
-    last_name: req.guest_last_name,
-    birth_date: req.guest_birth_date || '1992-05-15',
-    nationality: req.guest_nationality || 'International',
-    civil_status: req.guest_civil_status || 'Single',
-    contact_number: req.guest_contact_number,
-    email_address: req.guest_email,
-    address: req.guest_address || 'Emerald Bay Coastal Villa',
-  };
-  db.GUEST_DETAILS.push(guest);
+  let userId: number;
+  let username = '';
+  let guest: GuestDetails;
+
+  if (existingGuest) {
+    userId = existingGuest.user_id;
+    existingGuest.first_name = req.guest_first_name;
+    existingGuest.last_name = req.guest_last_name;
+    existingGuest.contact_number = req.guest_contact_number;
+    if (req.guest_birth_date) existingGuest.birth_date = req.guest_birth_date;
+    if (req.guest_nationality) existingGuest.nationality = req.guest_nationality;
+    if (req.guest_civil_status) existingGuest.civil_status = req.guest_civil_status;
+    if (req.guest_address) existingGuest.address = req.guest_address;
+    guest = existingGuest;
+  } else {
+    userId = Math.max(...db.USER_ACCOUNT.map((u) => u.user_id), 0) + 1;
+    username = `guest_${req.guest_first_name.toLowerCase()}_${Date.now().toString().slice(-4)}`;
+    db.USER_ACCOUNT.push({
+      user_id: userId,
+      user_name: username,
+      password_hash: '$argon2id$guest_session_hash',
+      user_role: 'guest',
+      acc_status: 'active',
+      created_date: new Date().toISOString(),
+    });
+
+    guest = {
+      user_id: userId,
+      first_name: req.guest_first_name,
+      last_name: req.guest_last_name,
+      birth_date: req.guest_birth_date || '1992-05-15',
+      nationality: req.guest_nationality || 'International',
+      civil_status: req.guest_civil_status || 'Single',
+      contact_number: req.guest_contact_number,
+      email_address: req.guest_email,
+      address: req.guest_address || 'Emerald Bay Coastal Villa',
+    };
+    db.GUEST_DETAILS.push(guest);
+  }
 
   // Calculate nights & amount
   const checkIn = new Date(req.check_in_date);
@@ -596,11 +616,11 @@ export async function createBooking(req: NewBookingRequest): Promise<{ booking: 
   const roomType = db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === Number(req.room_type_id)) || db.ROOM_TYPE_DETAILS[0];
   const totalAmount = nights * roomType.rate_per_night;
 
-  // 3. Create ROOM_BOOKING
+  // 2. Create ROOM_BOOKING
   const newBookingId = Math.max(...db.ROOM_BOOKING.map((b) => b.booking_id), 1000) + 1;
   const newBooking: RoomBooking = {
     booking_id: newBookingId,
-    user_id: newUserId,
+    user_id: userId,
     room_id: selectedRoom.room_id,
     booking_date: new Date().toISOString().split('T')[0],
     check_in_date: req.check_in_date,
@@ -613,12 +633,12 @@ export async function createBooking(req: NewBookingRequest): Promise<{ booking: 
   // Update room status to occupied
   selectedRoom.room_status = 'occupied';
 
-  // 4. Create PAYMENT_DETAILS
+  // 3. Create PAYMENT_DETAILS
   const newPaymentId = Math.max(...db.PAYMENT_DETAILS.map((p) => p.payment_id), 500) + 1;
   const payment: PaymentDetails = {
     payment_id: newPaymentId,
     booking_id: newBookingId,
-    payment_method: req.payment_method || 'Luxury Card (Visa/Mastercard/Amex)',
+    payment_method: req.payment_method || 'Pay at Counter',
     amount: totalAmount,
     payment_status: 'paid',
     payment_date: new Date().toISOString(),
@@ -630,16 +650,21 @@ export async function createBooking(req: NewBookingRequest): Promise<{ booking: 
   // Stream to Cloudflare D1 Database if configured
   if (isCloudflareD1Configured()) {
     try {
-      await batchCloudflareD1([
-        {
+      const d1Statements: Array<{ sql: string; params: any[] }> = [];
+
+      if (!existingGuest) {
+        d1Statements.push({
           sql: `INSERT OR IGNORE INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, ?, 'guest', 'active', ?);`,
           params: [
-            newUserId,
+            userId,
             username,
             '$argon2id$guest_session_hash',
             new Date().toISOString().replace('T', ' ').slice(0, 19),
           ],
-        },
+        });
+      }
+
+      d1Statements.push(
         {
           sql: `INSERT OR REPLACE INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationality, civil_status, contact_number, email_address, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           params: [
@@ -679,8 +704,10 @@ export async function createBooking(req: NewBookingRequest): Promise<{ booking: 
         {
           sql: `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ?;`,
           params: [selectedRoom.room_id],
-        },
-      ]);
+        }
+      );
+
+      await batchCloudflareD1(d1Statements);
       console.log(`[Cloudflare D1] Successfully streamed booking #${newBookingId} to Cloudflare Database`);
     } catch (err) {
       console.error('[Cloudflare D1 createBooking sync error]:', err);
