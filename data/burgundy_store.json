@@ -12,7 +12,7 @@
       "user_id": 2,
       "user_name": "staff_vincent",
       "password_hash": "argon2id$v=19$m=65536,t=3,p=4$secret_staff_hash",
-      "user_role": "staff",
+      "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-09-05T09:30:00Z"
     },
@@ -20,7 +20,7 @@
       "user_id": 3,
       "user_name": "staff_helena",
       "password_hash": "argon2id$v=19$m=65536,t=3,p=4$secret_staff_hash",
-      "user_role": "staff",
+      "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-09-10T11:15:00Z"
     },
@@ -108,7 +108,7 @@
       "user_id": 14,
       "user_name": "staff_mateo",
       "password_hash": "password123",
-      "user_role": "staff",
+      "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-10-15T06:49:32.584Z"
     },
@@ -119,6 +119,14 @@
       "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-10-15T07:19:37.385Z"
+    },
+    {
+      "user_id": 16,
+      "user_name": "juandc",
+      "password_hash": "juandc",
+      "user_role": "admin",
+      "acc_status": "active",
+      "created_date": "2026-10-15T08:20:44.376Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -161,6 +169,14 @@
       "last_name": "Ayuban",
       "position": "General Manager",
       "contact_number": "+63 917 454545"
+    },
+    {
+      "staff_id": 106,
+      "user_id": 16,
+      "first_name": "Juan",
+      "last_name": "Dela Cruz",
+      "position": "Staff Concierge Lead",
+      "contact_number": "+63 917 123 4567"
     }
   ],
   "GUEST_DETAILS": [

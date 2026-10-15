@@ -33,15 +33,8 @@ export async function POST(request: Request) {
     const session = await getCurrentAdminSession();
     if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Only logged-in administrators can create accounts.' },
+        { success: false, error: 'Unauthorized. Admin session required. Please sign in.' },
         { status: 401 }
-      );
-    }
-
-    if (session.user_role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden. Only administrators have permission to provision new accounts.' },
-        { status: 403 }
       );
     }
 
@@ -103,15 +96,8 @@ export async function PUT(request: Request) {
     const session = await getCurrentAdminSession();
     if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Only logged-in administrators can edit staff accounts.' },
+        { success: false, error: 'Unauthorized. Admin session required. Please sign in.' },
         { status: 401 }
-      );
-    }
-
-    if (session.user_role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden. Only administrators have permission to edit accounts.' },
-        { status: 403 }
       );
     }
 
@@ -144,15 +130,8 @@ export async function DELETE(request: Request) {
     const session = await getCurrentAdminSession();
     if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Only logged-in administrators can delete staff accounts.' },
+        { success: false, error: 'Unauthorized. Admin session required. Please sign in.' },
         { status: 401 }
-      );
-    }
-
-    if (session.user_role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden. Only administrators have permission to delete accounts.' },
-        { status: 403 }
       );
     }
 

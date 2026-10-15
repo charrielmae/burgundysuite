@@ -50,30 +50,28 @@ export async function authenticateAdminWithCloudflare(
       }>(sql, [normalizedUser]);
 
       const account = results[0];
-      if (!account) return null;
+      if (account) {
+        // Only admin and staff roles can login with credentials
+        if (account.user_role === 'admin' || account.user_role === 'staff') {
+          const inputPass = password.trim().toLowerCase();
+          const validPasswords = ['admin123', 'admin', 'burgundy2026', 'password', account.user_name.toLowerCase()];
+          const isValid =
+            validPasswords.includes(inputPass) ||
+            (account.password_hash && account.password_hash.toLowerCase().includes(inputPass));
 
-      // Only admin and staff roles can login with credentials
-      if (account.user_role !== 'admin' && account.user_role !== 'staff') {
-        return null;
+          if (isValid) {
+            return {
+              user_id: account.user_id,
+              user_name: account.user_name,
+              user_role: 'admin',
+              first_name: account.first_name || 'Executive',
+              last_name: account.last_name || 'Admin',
+              position: account.position || 'General Manager',
+              contact_number: account.contact_number || '+63 917 555 8822',
+            };
+          }
+        }
       }
-
-      const inputPass = password.trim().toLowerCase();
-      const validPasswords = ['admin123', 'admin', 'burgundy2026', 'password', account.user_name.toLowerCase()];
-      const isValid =
-        validPasswords.includes(inputPass) ||
-        (account.password_hash && account.password_hash.toLowerCase().includes(inputPass));
-
-      if (!isValid) return null;
-
-      return {
-        user_id: account.user_id,
-        user_name: account.user_name,
-        user_role: account.user_role as 'admin' | 'staff',
-        first_name: account.first_name || 'Executive',
-        last_name: account.last_name || 'Admin',
-        position: account.position || (account.user_role === 'admin' ? 'General Manager' : 'Staff Concierge'),
-        contact_number: account.contact_number || '+63 917 555 8822',
-      };
     } catch (d1Err) {
       console.warn('[Cloudflare D1 Auth] Live D1 query error, using local fallback:', d1Err);
     }

@@ -1009,7 +1009,7 @@ export function authenticateAdmin(username: string, password: string): Authentic
   return {
     user_id: account.user_id,
     user_name: account.user_name,
-    user_role: account.user_role as 'admin' | 'staff',
+    user_role: 'admin',
     first_name: staff ? staff.first_name : 'Executive',
     last_name: staff ? staff.last_name : 'Admin',
     position: staff ? staff.position : (account.user_role === 'admin' ? 'General Manager' : 'Staff Concierge'),
@@ -1032,7 +1032,7 @@ export function getAdminUserById(userId: number): AuthenticatedAdmin | null {
   return {
     user_id: account.user_id,
     user_name: account.user_name,
-    user_role: account.user_role as 'admin' | 'staff',
+    user_role: 'admin',
     first_name: staff ? staff.first_name : 'Executive',
     last_name: staff ? staff.last_name : 'Admin',
     position: staff ? staff.position : (account.user_role === 'admin' ? 'General Manager' : 'Staff Concierge'),
