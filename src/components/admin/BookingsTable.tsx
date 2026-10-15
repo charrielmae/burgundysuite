@@ -140,7 +140,7 @@ export default function BookingsTable({ bookings, onCheckOut }: BookingsTablePro
 
       {/* Responsive Table Container */}
       <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[11px]">
               <tr>

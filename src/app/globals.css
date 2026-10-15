@@ -30,20 +30,29 @@
   --gold-warm: #E5C378;
 }
 
-/* Custom Scrollbar for Luxury Feel */
+/* Clean Transparent Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a080c;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #5a1c2a;
-  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #d4af37;
+  background: rgba(100, 116, 139, 0.45);
+}
+
+/* Hide scrollbar completely while maintaining scrolling functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Glassmorphism and ambient glow utilities */
