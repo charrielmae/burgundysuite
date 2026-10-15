@@ -282,7 +282,7 @@ export default function AdminPage() {
       <AdminHeroBanner />
 
       {/* Main Command Center Body */}
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+      <div id="command-center" className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 space-y-12 scroll-mt-20">
         {loading || !kpis ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mx-auto mb-4" />

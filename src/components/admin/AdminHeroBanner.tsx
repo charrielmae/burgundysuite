@@ -1,11 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ChevronDown } from 'lucide-react';
 
 export default function AdminHeroBanner() {
+  const handleScrollDown = () => {
+    const target = document.getElementById('command-center');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <section className="relative w-full overflow-hidden bg-[#2B0E14]">
+    <section className="relative w-full min-h-[calc(100vh-76px)] flex flex-col justify-between items-center overflow-hidden bg-[#2B0E14]">
       {/* Background Photography with Warm Dusk Ambient Lighting */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
@@ -17,10 +24,13 @@ export default function AdminHeroBanner() {
       {/* Atmospheric Maroon Vignette & Gradient Overlay (Vibrant so pool & warm lights shine through) */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/70 via-[#240A10]/35 to-[#2B0E14]" />
 
-      {/* Hero Content Container */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center flex flex-col items-center">
+      {/* Top spacer for vertical balance */}
+      <div className="w-full shrink-0 h-6 sm:h-10" />
+
+      {/* Hero Content Container (Centered in Viewport) */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 text-center flex flex-col items-center">
         {/* Subtitle Pill with Frosted Glass Blur */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E5C378]/40 bg-[#2B0E14]/80 backdrop-blur-md text-[#E5C378] text-xs font-semibold tracking-[0.25em] uppercase mb-6 sm:mb-7 shadow-lg">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E5C378]/40 bg-[#2B0E14]/80 backdrop-blur-md text-[#E5C378] text-xs font-semibold tracking-[0.25em] uppercase mb-6 sm:mb-8 shadow-lg">
           <Sparkles className="w-3.5 h-3.5 text-[#E5C378]" />
           <span>A Sanctuary of Coastal Opulence</span>
         </div>
@@ -28,7 +38,7 @@ export default function AdminHeroBanner() {
         {/* Main Title: Experience Unmatched with Elegance on second line */}
         <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-light text-white tracking-tight leading-[1.15] mb-6 overflow-visible text-center">
           <span className="block drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">Experience Unmatched</span>
-          <span className="block mt-1 sm:mt-2 italic font-normal font-serif text-[#E5C378] gold-gradient-text tracking-normal drop-shadow-[0_4px_16px_rgba(212,175,55,0.4)]">
+          <span className="block mt-2 sm:mt-3 italic font-normal font-serif text-[#E5C378] gold-gradient-text tracking-normal drop-shadow-[0_4px_16px_rgba(212,175,55,0.4)]">
             Elegance
           </span>
         </h1>
@@ -40,6 +50,19 @@ export default function AdminHeroBanner() {
           bespoke luxury tailored to your every moment.
         </p>
       </div>
+
+      {/* Elegant Bottom Scroll Cue to Command Center */}
+      <button
+        type="button"
+        onClick={handleScrollDown}
+        className="relative z-10 pb-8 pt-2 flex flex-col items-center gap-2 text-white/60 hover:text-[#E5C378] text-[11px] tracking-[0.2em] uppercase font-semibold transition-colors cursor-pointer group"
+        title="Scroll to Command Center Dashboard"
+      >
+        <span className="drop-shadow">Executive Command Center</span>
+        <div className="w-8 h-8 rounded-full border border-[#E5C378]/30 bg-[#2B0E14]/70 backdrop-blur-md flex items-center justify-center group-hover:border-[#E5C378] group-hover:bg-[#381018] transition-all shadow-md animate-bounce">
+          <ChevronDown className="w-4 h-4 text-[#E5C378]" />
+        </div>
+      </button>
     </section>
   );
 }
