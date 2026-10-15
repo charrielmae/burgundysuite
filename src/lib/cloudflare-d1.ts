@@ -90,6 +90,55 @@ export async function queryCloudflareD1<T = any>(
 }
 
 /**
+ * Returns a D1Database-compatible object for Auth.js / NextAuth D1Adapter.
+ * Works with native Cloudflare binding (env.DB or process.env.DB) when deployed,
+ * or falls back to Cloudflare D1 REST client in local Node / Next.js development.
+ */
+export function getD1Database(): any {
+  if (typeof process !== 'undefined' && (process.env as any).DB) {
+    return (process.env as any).DB;
+  }
+  if (typeof globalThis !== 'undefined' && (globalThis as any).DB) {
+    return (globalThis as any).DB;
+  }
+
+  // Cloudflare D1 REST client adapter matching Cloudflare D1Database interface
+  return {
+    prepare(sql: string) {
+      let boundParams: any[] = [];
+      return {
+        bind(...args: any[]) {
+          boundParams = args.map((arg) => (arg === undefined ? null : arg));
+          return this;
+        },
+        async run() {
+          const res = await queryCloudflareD1(sql, boundParams);
+          return {
+            success: true,
+            meta: {
+              changes: res.changes || 0,
+              last_row_id: res.lastRowId || 0,
+            },
+          };
+        },
+        async first() {
+          const res = await queryCloudflareD1(sql, boundParams);
+          return res.results?.[0] || null;
+        },
+        async all() {
+          const res = await queryCloudflareD1(sql, boundParams);
+          return { results: res.results || [], success: true };
+        },
+        async raw() {
+          const res = await queryCloudflareD1(sql, boundParams);
+          return (res.results || []).map((row) => Object.values(row));
+        },
+      };
+    },
+  };
+}
+
+/**
  * Execute multiple statements in batch on Cloudflare D1
  */
 export async function batchCloudflareD1(
