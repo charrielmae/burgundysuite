@@ -47,12 +47,12 @@ export default function AdminHeader({
         </div>
 
         {/* Right Side: Action Controls & User Profile (Beside Export) */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full md:w-auto">
           {/* Add Suite / Room Button */}
           {onOpenAddSuite && (
             <button
               onClick={onOpenAddSuite}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-wide uppercase bg-emerald-700 hover:bg-emerald-600 text-white transition-all cursor-pointer shadow-sm border border-emerald-500/40"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold tracking-wide uppercase bg-emerald-700 hover:bg-emerald-600 text-white transition-all cursor-pointer shadow-sm border border-emerald-500/40"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Suite</span>
@@ -62,10 +62,10 @@ export default function AdminHeader({
           {/* Export Weekly Report Button */}
           <button
             onClick={onExportReport}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold tracking-wide uppercase bg-[#5A1C2A] text-[#E5C378] hover:bg-[#6D2233] border border-[#E5C378]/30 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold tracking-wide uppercase bg-[#5A1C2A] text-[#E5C378] hover:bg-[#6D2233] border border-[#E5C378]/30 transition-all cursor-pointer shadow-sm"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Weekly Report</span>
+            <span>Export Report</span>
           </button>
 
           {/* Active Admin Profile Pill with Logout (Positioned on the Right Side Beside Export) */}
