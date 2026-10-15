@@ -5,6 +5,7 @@ import {
   batchCloudflareD1,
   isCloudflareD1Configured,
 } from './cloudflare-d1';
+import { uploadAssetToR2 } from './cloudflare-r2';
 import {
   UserAccount,
   StaffDetails,
@@ -428,6 +429,43 @@ export async function createRoomType(
     } catch (d1Err) {
       console.error('[Cloudflare D1 createRoomType sync error]:', d1Err);
     }
+  }
+
+  // Upload suite details JSON to Cloudflare R2 Object Storage
+  try {
+    const detailsBuffer = Buffer.from(
+      JSON.stringify(
+        {
+          suite_id: newTypeId,
+          name: newType.room_type,
+          capacity: newType.room_capacity,
+          rate_per_night: newType.rate_per_night,
+          description: newType.description,
+          image_url: newType.image_url,
+          features: newType.features,
+          badge: newType.badge,
+          initial_room_number: newRoom.room_number,
+          floor_number: newRoom.floor_number,
+          status: newRoom.room_status,
+          created_at: new Date().toISOString(),
+        },
+        null,
+        2
+      )
+    );
+    await uploadAssetToR2({
+      key: `suites/suite-${newTypeId}-details.json`,
+      buffer: detailsBuffer,
+      contentType: 'application/json',
+      metadata: {
+        suiteId: String(newTypeId),
+        suiteName: newType.room_type,
+        createdAt: new Date().toISOString(),
+      },
+    });
+    console.log(`[Cloudflare R2] Successfully uploaded suite #${newTypeId} details JSON to R2`);
+  } catch (r2Err) {
+    console.warn('[Cloudflare R2 createRoomType details upload warning]:', r2Err);
   }
 
   return { roomType: newType, room: newRoom };
