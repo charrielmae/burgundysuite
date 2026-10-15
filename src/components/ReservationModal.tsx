@@ -6,7 +6,7 @@ import {
   X,
   Calendar,
   User,
-  CreditCard,
+  Wallet,
   CheckCircle2,
   Sparkles,
   ArrowRight,
@@ -56,10 +56,7 @@ export default function ReservationModal({
   const [address, setAddress] = useState('100 Ocean Crest Blvd, Sapphire Coast');
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState('Credit Card (Visa Signature)');
-  const [cardNumber, setCardNumber] = useState('•••• •••• •••• 4242');
-  const [expiry, setExpiry] = useState('12/28');
-  const [cvv, setCvv] = useState('888');
+  const [paymentMethod, setPaymentMethod] = useState('E-Wallet');
 
   // Success State
   const [confirmedBooking, setConfirmedBooking] = useState<{
@@ -470,74 +467,85 @@ export default function ReservationModal({
             </div>
           )}
 
-          {/* STEP 3: Payment Details */}
+          {/* STEP 3: Payment Method */}
           {step === 3 && (
             <div className="space-y-5">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#E5C378] block mb-2">
-                  Payment Method (ERD: PAYMENT_DETAILS)
+                <label className="text-xs font-bold uppercase tracking-wider text-[#E5C378] block mb-3">
+                  Select Payment Method
                 </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#381018] border border-[#5A1C2A] text-white text-sm focus:outline-none focus:border-[#E5C378]"
-                >
-                  <option value="Credit Card (Visa Signature)">
-                    Credit Card (Visa Signature / World Elite)
-                  </option>
-                  <option value="Amex Centurion Card">American Express Centurion</option>
-                  <option value="Wire Transfer / Swift">Direct Wire Transfer / Swift</option>
-                  <option value="Cryptocurrency (USDC/ETH)">Cryptocurrency (USDC / ETH)</option>
-                </select>
+                <div className="space-y-3">
+                  {/* E-Wallet Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('E-Wallet')}
+                    className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-200 cursor-pointer ${
+                      paymentMethod === 'E-Wallet'
+                        ? 'bg-[#381018] border-[#E5C378] shadow-[0_0_15px_rgba(229,195,120,0.15)]'
+                        : 'bg-[#2B0E14] border-[#5A1C2A] hover:border-[#E5C378]/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        paymentMethod === 'E-Wallet'
+                          ? 'bg-[#E5C378] text-[#2B0E14]'
+                          : 'bg-[#381018] text-[#E5C378] border border-[#5A1C2A]'
+                      }`}>
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white">E-Wallet</p>
+                        <p className="text-[11px] text-white/60 mt-0.5">Pay online via GCash, Maya, or other e-wallet services</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        paymentMethod === 'E-Wallet'
+                          ? 'border-[#E5C378] bg-[#E5C378]'
+                          : 'border-[#5A1C2A]'
+                      }`}>
+                        {paymentMethod === 'E-Wallet' && (
+                          <div className="w-2 h-2 rounded-full bg-[#2B0E14]" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Pay at Counter Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('Pay at Counter')}
+                    className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-200 cursor-pointer ${
+                      paymentMethod === 'Pay at Counter'
+                        ? 'bg-[#381018] border-[#E5C378] shadow-[0_0_15px_rgba(229,195,120,0.15)]'
+                        : 'bg-[#2B0E14] border-[#5A1C2A] hover:border-[#E5C378]/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        paymentMethod === 'Pay at Counter'
+                          ? 'bg-[#E5C378] text-[#2B0E14]'
+                          : 'bg-[#381018] text-[#E5C378] border border-[#5A1C2A]'
+                      }`}>
+                        <Building className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white">Pay at the Counter</p>
+                        <p className="text-[11px] text-white/60 mt-0.5">Settle payment upon arrival at the front desk</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        paymentMethod === 'Pay at Counter'
+                          ? 'border-[#E5C378] bg-[#E5C378]'
+                          : 'border-[#5A1C2A]'
+                      }`}>
+                        {paymentMethod === 'Pay at Counter' && (
+                          <div className="w-2 h-2 rounded-full bg-[#2B0E14]" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Simulated Card Fields */}
-              <div className="p-4 rounded-2xl bg-[#381018] border border-[#5A1C2A] space-y-3">
-                <div className="flex items-center justify-between text-xs text-[#E5C378]">
-                  <span className="font-semibold flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#E5C378]" />
-                    256-Bit Encrypted Luxury Gateway
-                  </span>
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-white/60 uppercase block mb-1">
-                    Card Number
-                  </label>
-                  <input
-                    type="text"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#2B0E14] border border-[#5A1C2A] text-white text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-white/60 uppercase block mb-1">
-                      Expiry Date
-                    </label>
-                    <input
-                      type="text"
-                      value={expiry}
-                      onChange={(e) => setExpiry(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-[#2B0E14] border border-[#5A1C2A] text-white text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-white/60 uppercase block mb-1">
-                      CVV / Security Code
-                    </label>
-                    <input
-                      type="text"
-                      value={cvv}
-                      onChange={(e) => setCvv(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-[#2B0E14] border border-[#5A1C2A] text-white text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Final Summary */}
+              {/* Booking Summary */}
               <div className="p-4 rounded-2xl bg-[#240A10] border border-[#5A1C2A] text-xs space-y-1.5 text-white/80">
                 <div className="flex justify-between">
                   <span>Suite Reserved:</span>
@@ -555,8 +563,12 @@ export default function ReservationModal({
                     {checkIn} to {checkOut} ({nights} Nights)
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span>Payment:</span>
+                  <span className="text-white font-semibold">{paymentMethod}</span>
+                </div>
                 <div className="flex justify-between pt-2 border-t border-[#5A1C2A] font-bold text-sm text-[#E5C378]">
-                  <span>Authorized Charge:</span>
+                  <span>Total Charge:</span>
                   <span>₱{total.toFixed(2)}</span>
                 </div>
               </div>
@@ -566,7 +578,7 @@ export default function ReservationModal({
                   type="button"
                   disabled={loading}
                   onClick={() => setStep(2)}
-                  className="px-5 py-3 rounded-full bg-[#240A10] border border-[#5A1C2A] text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-3 rounded-full bg-[#240A10] border border-[#5A1C2A] text-white/80 hover:text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -578,11 +590,11 @@ export default function ReservationModal({
                   className="flex-1 py-3.5 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#E5C378] text-[#2B0E14] text-xs font-bold uppercase tracking-wider hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
-                    <span>Authorizing VIP Reservation...</span>
+                    <span>Processing Reservation...</span>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Confirm & Authorize Reservation (₱{total.toFixed(2)})</span>
+                      <span>Confirm Reservation</span>
                     </>
                   )}
                 </button>
