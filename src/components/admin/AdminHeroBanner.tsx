@@ -21,8 +21,11 @@ export default function AdminHeroBanner() {
         }}
       />
 
-      {/* Atmospheric Maroon Vignette & Gradient Overlay (Vibrant so pool & warm lights shine through) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/70 via-[#240A10]/35 to-[#2B0E14]" />
+      {/* Atmospheric Maroon Vignette & Soft Dreamy Backdrop Blur */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/90 via-[#381018]/80 to-[#2B0E14] backdrop-blur-[2px]" />
+
+      {/* Luminous Ambient Maroon Blur Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[450px] bg-[#5A1C2A]/45 blur-[130px] rounded-full pointer-events-none" />
 
       {/* Top spacer for vertical balance */}
       <div className="w-full shrink-0 h-6 sm:h-10" />

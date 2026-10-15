@@ -62,8 +62,11 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
         }}
       />
 
-      {/* Atmospheric Maroon Vignette & Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/90 via-[#381018]/85 to-[#170509]" />
+      {/* Atmospheric Maroon Vignette & Soft Dreamy Backdrop Blur */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2B0E14]/90 via-[#381018]/85 to-[#170509] backdrop-blur-[2px]" />
+
+      {/* Luminous Ambient Maroon Blur Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#5A1C2A]/40 blur-[130px] rounded-full pointer-events-none" />
       {/* Back to Guest Portal Link */}
       <div className="w-full max-w-md mb-6 flex justify-between items-center relative z-10">
         <Link
