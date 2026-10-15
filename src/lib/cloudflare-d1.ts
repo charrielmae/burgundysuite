@@ -262,7 +262,11 @@ export async function syncAllStoreDataToCloudflareD1(store: {
       room_type_id INTEGER PRIMARY KEY,
       room_type VARCHAR(100) NOT NULL,
       room_capacity INTEGER NOT NULL,
-      rate_per_night DECIMAL(10,2) NOT NULL
+      rate_per_night DECIMAL(10,2) NOT NULL,
+      image_url TEXT,
+      description TEXT,
+      features TEXT,
+      badge TEXT
     );`,
     `CREATE TABLE IF NOT EXISTS ROOM_DETAILS (
       room_id INTEGER PRIMARY KEY,
@@ -329,8 +333,17 @@ export async function syncAllStoreDataToCloudflareD1(store: {
 
   for (const rt of store.ROOM_TYPE_DETAILS || []) {
     dataStatements.push({
-      sql: `INSERT OR REPLACE INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night) VALUES (?, ?, ?, ?);`,
-      params: [rt.room_type_id, rt.room_type, rt.room_capacity, rt.rate_per_night],
+      sql: `INSERT OR REPLACE INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night, image_url, description, features, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      params: [
+        rt.room_type_id,
+        rt.room_type,
+        rt.room_capacity,
+        rt.rate_per_night,
+        rt.image_url || null,
+        rt.description || null,
+        typeof rt.features === 'string' ? rt.features : JSON.stringify(rt.features || []),
+        rt.badge || null,
+      ],
     });
   }
 

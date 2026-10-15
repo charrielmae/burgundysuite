@@ -8,10 +8,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
-  ArrowRight,
-  ShieldCheck,
+  HardDrive,
   ExternalLink,
-  Save,
+  ShieldCheck,
+  FolderOpen,
 } from 'lucide-react';
 
 interface CloudflareD1ModalProps {
@@ -25,9 +25,19 @@ export default function CloudflareD1Modal({
   onClose,
   onStatusChange,
 }: CloudflareD1ModalProps) {
+  const [activeTab, setActiveTab] = useState<'status' | 'd1' | 'r2'>('status');
+
+  // D1 States
   const [accountId, setAccountId] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [apiToken, setApiToken] = useState('');
+
+  // R2 States
+  const [r2BucketName, setR2BucketName] = useState('burgundy-bucket');
+  const [r2AccessKeyId, setR2AccessKeyId] = useState('');
+  const [r2SecretAccessKey, setR2SecretAccessKey] = useState('');
+  const [r2PublicUrl, setR2PublicUrl] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [status, setStatus] = useState<any>(null);
@@ -45,7 +55,7 @@ export default function CloudflareD1Modal({
         }
       }
     } catch (err) {
-      console.error('Failed to probe Cloudflare D1:', err);
+      console.error('Failed to probe Cloudflare services:', err);
     } finally {
       setStatusLoading(false);
     }
@@ -60,7 +70,7 @@ export default function CloudflareD1Modal({
 
   if (!isOpen) return null;
 
-  const handleSaveAndSync = async (e: React.FormEvent) => {
+  const handleSaveAndSyncD1 = async (e: React.FormEvent) => {
     e.preventDefault();
     setToast(null);
 
@@ -92,6 +102,44 @@ export default function CloudflareD1Modal({
       setToast({
         type: 'success',
         message: data.message || 'Cloudflare D1 credentials verified and all data synced!',
+      });
+      await checkStatus();
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: (err as Error).message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveR2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setToast(null);
+
+    try {
+      setLoading(true);
+      const res = await fetch('/api/cloudflare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_r2',
+          r2BucketName: r2BucketName.trim(),
+          r2AccessKeyId: r2AccessKeyId.trim(),
+          r2SecretAccessKey: r2SecretAccessKey.trim(),
+          r2PublicUrl: r2PublicUrl.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update Cloudflare R2');
+      }
+
+      setToast({
+        type: 'success',
+        message: 'Cloudflare R2 Object Storage settings successfully updated!',
       });
       await checkStatus();
     } catch (err) {
@@ -143,13 +191,13 @@ export default function CloudflareD1Modal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>Cloudflare D1 Database Sync</span>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                  Live DBMS
+                <span>Cloudflare Services & Storage</span>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  D1 & R2
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Connect and sync Burgundy Suite records with Cloudflare D1.
+                Live Cloudflare D1 Database and R2 Object Storage for Burgundy Suite & Resort.
               </p>
             </div>
           </div>
@@ -161,7 +209,47 @@ export default function CloudflareD1Modal({
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex items-center px-6 border-b border-slate-200 bg-slate-50/70 gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('status')}
+            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'status'
+                ? 'border-[#741B2D] text-[#741B2D]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Overview & Health</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('r2')}
+            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'r2'
+                ? 'border-[#741B2D] text-[#741B2D]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>R2 Object Storage</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('d1')}
+            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'd1'
+                ? 'border-[#741B2D] text-[#741B2D]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>D1 SQL Settings</span>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
           {/* Toast Notification */}
           {toast && (
             <div
@@ -180,173 +268,278 @@ export default function CloudflareD1Modal({
             </div>
           )}
 
-          {/* Current Live Status Card */}
-          <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  status?.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-                }`}
-              />
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider block text-slate-700">
-                  {statusLoading
-                    ? 'Probing Cloudflare D1...'
-                    : status?.connected
-                    ? 'Cloudflare D1 Connected & Ready'
-                    : 'Cloudflare D1 Disconnected'}
-                </span>
-                <span className="text-[11px] text-slate-500 block">
-                  {statusLoading
-                    ? 'Testing connection...'
-                    : status?.message || 'Awaiting valid Cloudflare credentials'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={checkStatus}
-                disabled={statusLoading}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${statusLoading ? 'animate-spin' : ''}`} />
-                <span>Test Ping</span>
-              </button>
-
-              {status?.connected && (
-                <button
-                  type="button"
-                  onClick={handleManualSyncOnly}
-                  disabled={loading}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#741B2D] text-white text-xs font-bold hover:bg-[#5A1C2A] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  <span>Sync All Local Data</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Tables Found in Cloudflare D1 */}
-          {status?.tables && status.tables.length > 0 && (
-            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-2">
-              <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Active D1 Tables & Row Counts</span>
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                {status.tables.map((tbl: string) => (
+          {/* TAB 1: OVERVIEW & HEALTH */}
+          {activeTab === 'status' && (
+            <div className="space-y-4">
+              {/* Service 1: Cloudflare D1 Database */}
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
                   <div
-                    key={tbl}
-                    className="p-2 rounded-xl bg-white border border-emerald-200/80 shadow-2xs flex flex-col"
-                  >
-                    <span className="text-[10px] text-slate-500 font-semibold truncate">{tbl}</span>
-                    <span className="font-bold text-emerald-800 text-sm">
-                      {status.counts?.[tbl] !== undefined ? `${status.counts[tbl]} rows` : 'Active'}
+                    className={`w-3.5 h-3.5 rounded-full ${
+                      status?.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                    }`}
+                  />
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider block text-slate-800 flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Cloudflare D1 Database (SQL)</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      {statusLoading
+                        ? 'Testing connection...'
+                        : status?.connected
+                        ? `Connected (${status?.tables?.length || 0} tables, Live UTC: ${status?.serverUtc || 'Active'})`
+                        : status?.message || 'Disconnected'}
                     </span>
                   </div>
-                ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={checkStatus}
+                    disabled={statusLoading}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${statusLoading ? 'animate-spin' : ''}`} />
+                    <span>Ping</span>
+                  </button>
+
+                  {status?.connected && (
+                    <button
+                      type="button"
+                      onClick={handleManualSyncOnly}
+                      disabled={loading}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#741B2D] text-white text-xs font-bold hover:bg-[#5A1C2A] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                      <span>Sync Data</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Service 2: Cloudflare R2 Object Storage */}
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full ${
+                      status?.r2?.connected ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'
+                    }`}
+                  />
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider block text-slate-800 flex items-center gap-1.5">
+                      <HardDrive className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Cloudflare R2 Object Storage (burgundy-bucket)</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 block font-mono text-[10px]">
+                      https://b730d1dce2f590cd1ae5726758a0e590.r2.cloudflarestorage.com/burgundy-bucket
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    Active Storage
+                  </span>
+                </div>
+              </div>
+
+              {/* Active D1 Tables & Row Counts */}
+              {status?.tables && status.tables.length > 0 && (
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+                  <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Synchronized Cloudflare D1 Tables & Row Counts</span>
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {status.tables.map((tbl: string) => (
+                      <div
+                        key={tbl}
+                        className="p-2.5 rounded-xl bg-white border border-emerald-200/80 shadow-2xs flex flex-col"
+                      >
+                        <span className="text-[10px] text-slate-500 font-semibold truncate">
+                          {tbl}
+                        </span>
+                        <span className="font-bold text-emerald-800 text-sm">
+                          {status.counts?.[tbl] !== undefined
+                            ? `${status.counts[tbl]} rows`
+                            : 'Active'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Configuration Form */}
-          <form onSubmit={handleSaveAndSync} className="space-y-4">
-            <div className="border-t border-slate-100 pt-4">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
-                Enter Cloudflare D1 Credentials
-              </h3>
-              <p className="text-[11px] text-slate-500 mb-4">
-                These will be saved directly into <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">.env.local</code> and applied to the active database connection.
-              </p>
+          {/* TAB 2: R2 OBJECT STORAGE CONFIGURATION */}
+          {activeTab === 'r2' && (
+            <form onSubmit={handleSaveR2} className="space-y-4">
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-1">
+                <span className="font-bold flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-amber-700" />
+                  Cloudflare R2 Bucket Details
+                </span>
+                <p className="text-[11px] text-amber-800">
+                  Suite images uploaded in the Admin portal are stored in Cloudflare R2 bucket:{' '}
+                  <code className="font-mono bg-white px-1 py-0.5 rounded border border-amber-200 font-bold">
+                    burgundy-bucket
+                  </code>
+                  .
+                </p>
+              </div>
 
               <div className="space-y-3.5">
-                {/* Account ID */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Cloudflare Account ID *
+                    R2 Bucket Name
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 7a9f8b4c2d1e0f3a6b5c4d3e2f1a0b9c"
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    value={r2BucketName}
+                    onChange={(e) => setR2BucketName(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Found in the right sidebar of your Cloudflare Dashboard overview page.
-                  </p>
                 </div>
 
-                {/* Database ID */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Cloudflare D1 Database ID *
+                    R2 S3 Access Key ID (Optional)
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. 8f6b4e2a-1c3d-5e7f-9a0b-2c4d6e8f0a2b"
-                    value={databaseId}
-                    onChange={(e) => setDatabaseId(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    placeholder="e.g. 32-character R2 Access Key ID"
+                    value={r2AccessKeyId}
+                    onChange={(e) => setR2AccessKeyId(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Found under Cloudflare Dashboard → Workers & Pages → D1 → Your Database.
+                    Generated in Cloudflare Dashboard → R2 Overview → Manage R2 API Tokens.
                   </p>
                 </div>
 
-                {/* API Token */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Cloudflare API Token (with D1 Edit Permissions) *
+                    R2 S3 Secret Access Key (Optional)
                   </label>
                   <input
                     type="password"
-                    required
-                    placeholder="e.g. cloufdlare_api_token_here..."
-                    value={apiToken}
-                    onChange={(e) => setApiToken(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    placeholder="e.g. 64-character R2 Secret Access Key"
+                    value={r2SecretAccessKey}
+                    onChange={(e) => setR2SecretAccessKey(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Create in My Profile → API Tokens → Create Token → Select &quot;D1:Edit&quot; permissions.
-                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    R2 Public Bucket URL / Custom Domain (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://pub-xxxx.r2.dev or https://media.burgundysuite.com"
+                    value={r2PublicUrl}
+                    onChange={(e) => setR2PublicUrl(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Submit Action */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-5 py-2.5 rounded-xl bg-[#F6821F] hover:bg-[#E57213] text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Connecting & Syncing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span>Save & Sync to Cloudflare D1</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 py-2.5 rounded-xl bg-[#741B2D] hover:bg-[#5A1C2A] text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <HardDrive className="w-3.5 h-3.5" />
+                  <span>Update R2 Storage Settings</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* TAB 3: D1 SQL DATABASE CONFIGURATION */}
+          {activeTab === 'd1' && (
+            <form onSubmit={handleSaveAndSyncD1} className="space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  Cloudflare D1 Database Credentials
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Applied directly to <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">.env.local</code> and synced with Cloudflare D1.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Cloudflare Account ID *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. b730d1dce2f590cd1ae5726758a0e590"
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Cloudflare D1 Database ID *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 9b1eb0fe-1e04-44d1-9cc7-e1a800009618"
+                      value={databaseId}
+                      onChange={(e) => setDatabaseId(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Cloudflare API Token *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="e.g. cfut_..."
+                      value={apiToken}
+                      onChange={(e) => setApiToken(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white font-mono shadow-xs focus:ring-2 focus:ring-[#741B2D]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 py-2.5 rounded-xl bg-[#F6821F] hover:bg-[#E57213] text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Save & Sync to Cloudflare D1</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Bottom Close Button */}
+          <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

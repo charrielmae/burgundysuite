@@ -55,6 +55,14 @@
       "user_role": "guest",
       "acc_status": "active",
       "created_date": "2026-10-08T12:00:00Z"
+    },
+    {
+      "user_id": 8,
+      "user_name": "guest_isabella_8009",
+      "password_hash": "$argon2id$guest_session_hash",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-15T03:43:58.009Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -127,6 +135,17 @@
       "contact_number": "+63 920 800 5678",
       "email_address": "sophia.laurent@parisinspire.fr",
       "address": "18 Rue de la Paix, 75002 Paris, France"
+    },
+    {
+      "user_id": 8,
+      "first_name": "Isabella",
+      "last_name": "Montgomery",
+      "birth_date": "1990-07-12",
+      "nationality": "Monégasque",
+      "civil_status": "Married",
+      "contact_number": "+377 98 98 00 11",
+      "email_address": "isabella.montgomery@monaco-yachts.mc",
+      "address": "15 Boulevard de Suisse, Monte Carlo, Monaco"
     }
   ],
   "ROOM_TYPE_DETAILS": [
@@ -213,6 +232,20 @@
         "En-suite Rain Shower",
         "Artisanal Mini Bar"
       ]
+    },
+    {
+      "room_type_id": 7,
+      "room_type": "Royal Emerald Penthouse",
+      "room_capacity": 8,
+      "rate_per_night": 4500,
+      "description": "Ultra-exclusive 360-degree top-floor penthouse with private helicopter charter and infinity ocean plunge pool.",
+      "image_url": "/api/media/suites/1792035835546-emerald-villa-ocean.png",
+      "badge": "Up to 8 Guests",
+      "features": [
+        "Helipad VIP Transfer",
+        "Private Infinity Plunge Pool",
+        "Personal Dedicated Butler"
+      ]
     }
   ],
   "ROOM_DETAILS": [
@@ -271,6 +304,13 @@
       "room_number": 502,
       "floor_number": 5,
       "room_status": "available"
+    },
+    {
+      "room_id": 9,
+      "room_type_id": 7,
+      "room_number": 501,
+      "floor_number": 5,
+      "room_status": "occupied"
     }
   ],
   "ROOM_BOOKING": [
@@ -313,6 +353,16 @@
       "check_out_date": "2026-10-09",
       "total_amount": 1070,
       "booking_status": "completed"
+    },
+    {
+      "booking_id": 1005,
+      "user_id": 8,
+      "room_id": 9,
+      "booking_date": "2026-10-15",
+      "check_in_date": "2026-10-20",
+      "check_out_date": "2026-10-24",
+      "total_amount": 18000,
+      "booking_status": "checked-in"
     }
   ],
   "PAYMENT_DETAILS": [
@@ -347,6 +397,14 @@
       "amount": 1070,
       "payment_status": "paid",
       "payment_date": "2026-10-02T14:28:55Z"
+    },
+    {
+      "payment_id": 505,
+      "booking_id": 1005,
+      "payment_method": "Luxury Card (Visa Infinite)",
+      "amount": 18000,
+      "payment_status": "paid",
+      "payment_date": "2026-10-15T03:43:58.009Z"
     }
   ]
 }

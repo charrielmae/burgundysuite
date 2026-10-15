@@ -103,7 +103,7 @@ export default function AdminHeader({
                 }`}
               />
               <span>
-                {isCloudflareConnected ? 'Cloudflare D1: Live' : 'Cloudflare D1: Setup / Sync'}
+                {isCloudflareConnected ? 'Cloudflare D1 & R2: Live' : 'Cloudflare D1 & R2: Setup'}
               </span>
             </button>
           )}

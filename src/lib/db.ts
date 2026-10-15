@@ -407,8 +407,17 @@ export async function createRoomType(
     try {
       await batchCloudflareD1([
         {
-          sql: `INSERT OR REPLACE INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night) VALUES (?, ?, ?, ?);`,
-          params: [newType.room_type_id, newType.room_type, newType.room_capacity, newType.rate_per_night],
+          sql: `INSERT OR REPLACE INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night, image_url, description, features, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+          params: [
+            newType.room_type_id,
+            newType.room_type,
+            newType.room_capacity,
+            newType.rate_per_night,
+            newType.image_url || null,
+            newType.description || null,
+            JSON.stringify(newType.features || []),
+            newType.badge || null,
+          ],
         },
         {
           sql: `INSERT OR REPLACE INTO ROOM_DETAILS (room_id, room_type_id, room_number, floor_number, room_status) VALUES (?, ?, ?, ?, 'available');`,
