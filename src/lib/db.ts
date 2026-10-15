@@ -20,6 +20,8 @@ import {
   NewBookingRequest,
   NewRoomTypeRequest,
   RoomStatus,
+  NewAccountRequest,
+  StaffAccountWithUser,
 } from '@/types/database';
 
 interface DatabaseData {
@@ -980,6 +982,144 @@ export function getAdminUserById(userId: number): AuthenticatedAdmin | null {
     last_name: staff ? staff.last_name : 'Admin',
     position: staff ? staff.position : (account.user_role === 'admin' ? 'General Manager' : 'Staff Concierge'),
     contact_number: staff ? staff.contact_number : '+63 917 555 8822',
+  };
+}
+
+export function getStaffAccounts(): StaffAccountWithUser[] {
+  const db = readDb();
+  return db.STAFF_DETAILS.map((staff) => {
+    const user = db.USER_ACCOUNT.find((u) => u.user_id === staff.user_id);
+    return {
+      user_id: staff.user_id,
+      user_name: user?.user_name || `staff_${staff.staff_id}`,
+      user_role: (user?.user_role as 'admin' | 'staff') || 'staff',
+      acc_status: user?.acc_status || 'active',
+      created_date: user?.created_date || '2026-09-01T08:00:00Z',
+      staff_id: staff.staff_id,
+      first_name: staff.first_name,
+      last_name: staff.last_name,
+      position: staff.position,
+      contact_number: staff.contact_number,
+    };
+  }).sort((a, b) => a.user_id - b.user_id);
+}
+
+export async function createStaffAccount(req: NewAccountRequest): Promise<StaffAccountWithUser> {
+  const db = readDb();
+  const normalizedUsername = req.user_name.trim().toLowerCase();
+
+  // Check if username already exists
+  const existing = db.USER_ACCOUNT.find(
+    (u) => u.user_name.trim().toLowerCase() === normalizedUsername
+  );
+  if (existing) {
+    throw new Error(`Username "${req.user_name}" is already registered.`);
+  }
+
+  const newUserId = Math.max(...db.USER_ACCOUNT.map((u) => u.user_id), 0) + 1;
+  const newStaffId = Math.max(...db.STAFF_DETAILS.map((s) => s.staff_id), 0) + 1;
+  const createdDate = new Date().toISOString();
+
+  // 1. Create USER_ACCOUNT
+  const newUser: UserAccount = {
+    user_id: newUserId,
+    user_name: req.user_name.trim(),
+    password_hash: req.password.trim(),
+    user_role: req.user_role,
+    acc_status: 'active',
+    created_date: createdDate,
+  };
+  db.USER_ACCOUNT.push(newUser);
+
+  // 2. Create STAFF_DETAILS
+  const newStaff: StaffDetails = {
+    staff_id: newStaffId,
+    user_id: newUserId,
+    first_name: req.first_name.trim(),
+    last_name: req.last_name.trim(),
+    position: req.position.trim(),
+    contact_number: req.contact_number.trim(),
+  };
+  db.STAFF_DETAILS.push(newStaff);
+
+  saveDb(db);
+
+  // 3. Sync to Cloudflare D1 SQL Database
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `INSERT OR REPLACE INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, ?, ?, 'active', ?);`,
+          params: [
+            newUser.user_id,
+            newUser.user_name,
+            newUser.password_hash,
+            newUser.user_role,
+            createdDate.replace('T', ' ').slice(0, 19),
+          ],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO STAFF_DETAILS (staff_id, user_id, first_name, last_name, position, contact_number) VALUES (?, ?, ?, ?, ?, ?);`,
+          params: [
+            newStaff.staff_id,
+            newStaff.user_id,
+            newStaff.first_name,
+            newStaff.last_name,
+            newStaff.position,
+            newStaff.contact_number,
+          ],
+        },
+        {
+          sql: `INSERT OR REPLACE INTO users (id, name, email) VALUES (?, ?, ?);`,
+          params: [
+            String(newUserId),
+            `${newStaff.first_name} ${newStaff.last_name}`,
+            `${newUser.user_name}@burgundysuite.com`,
+          ],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Created staff account: ${newUser.user_name} (${newUser.user_role})`);
+    } catch (d1Err) {
+      console.error('[Cloudflare D1 createStaffAccount sync error]:', d1Err);
+    }
+  }
+
+  // 4. Save account record JSON to Cloudflare R2
+  try {
+    const accountBuffer = Buffer.from(
+      JSON.stringify(
+        {
+          user_id: newUserId,
+          user_name: newUser.user_name,
+          user_role: newUser.user_role,
+          staff_id: newStaffId,
+          first_name: newStaff.first_name,
+          last_name: newStaff.last_name,
+          position: newStaff.position,
+          contact_number: newStaff.contact_number,
+          created_date: createdDate,
+        },
+        null,
+        2
+      )
+    );
+    await uploadAssetToR2({
+      key: `accounts/user-${newUserId}-details.json`,
+      buffer: accountBuffer,
+      contentType: 'application/json',
+      metadata: {
+        userId: String(newUserId),
+        username: newUser.user_name,
+        role: newUser.user_role,
+      },
+    });
+  } catch (r2Err) {
+    console.warn('[Cloudflare R2 createStaffAccount warning]:', r2Err);
+  }
+
+  return {
+    ...newUser,
+    ...newStaff,
   };
 }
 

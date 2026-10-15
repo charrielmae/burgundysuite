@@ -140,3 +140,26 @@ export interface NewBookingRequest {
   guest_address: string;
   payment_method: string;
 }
+
+export interface NewAccountRequest {
+  user_name: string;
+  password: string;
+  user_role: 'admin' | 'staff';
+  first_name: string;
+  last_name: string;
+  position: string;
+  contact_number: string;
+}
+
+export interface StaffAccountWithUser {
+  user_id: number;
+  user_name: string;
+  user_role: 'admin' | 'staff';
+  acc_status: AccountStatus;
+  created_date: string;
+  staff_id: number;
+  first_name: string;
+  last_name: string;
+  position: string;
+  contact_number: string;
+}

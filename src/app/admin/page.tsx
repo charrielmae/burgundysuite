@@ -8,6 +8,7 @@ import RoomInventoryGrid from '@/components/admin/RoomInventoryGrid';
 import BookingsTable from '@/components/admin/BookingsTable';
 import PaymentLogs from '@/components/admin/PaymentLogs';
 import AddSuiteModal from '@/components/admin/AddSuiteModal';
+import StaffAccountsModal from '@/components/admin/StaffAccountsModal';
 import CloudflareD1Modal from '@/components/admin/CloudflareD1Modal';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Footer from '@/components/Footer';
@@ -30,6 +31,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAddSuiteOpen, setIsAddSuiteOpen] = useState(false);
+  const [isAccountsOpen, setIsAccountsOpen] = useState(false);
   const [isCloudflareOpen, setIsCloudflareOpen] = useState(false);
   const [isCloudflareConnected, setIsCloudflareConnected] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -271,6 +273,7 @@ export default function AdminPage() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenAddSuite={() => setIsAddSuiteOpen(true)}
+        onOpenAccounts={() => setIsAccountsOpen(true)}
         onExportReport={handleExportReport}
       />
 
@@ -319,6 +322,16 @@ export default function AdminPage() {
         onClose={() => setIsAddSuiteOpen(false)}
         onSuccess={(suiteName) => {
           showToast(`Suite "${suiteName}" published successfully! Available immediately in Guest Portal.`);
+          loadData();
+        }}
+      />
+
+      {/* Staff & Admin Accounts Modal (Private Admin Provisioning) */}
+      <StaffAccountsModal
+        isOpen={isAccountsOpen}
+        onClose={() => setIsAccountsOpen(false)}
+        onSuccess={(msg) => {
+          showToast(msg);
           loadData();
         }}
       />
