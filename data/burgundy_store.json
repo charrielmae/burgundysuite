@@ -111,6 +111,14 @@
       "user_role": "staff",
       "acc_status": "active",
       "created_date": "2026-10-15T06:49:32.584Z"
+    },
+    {
+      "user_id": 15,
+      "user_name": "cmayuban",
+      "password_hash": "cmayuban",
+      "user_role": "admin",
+      "acc_status": "active",
+      "created_date": "2026-10-15T07:19:37.385Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -143,8 +151,16 @@
       "user_id": 14,
       "first_name": "Mateo",
       "last_name": "Alvarez",
-      "position": "Night Concierge",
-      "contact_number": "+63 917 444 5555"
+      "position": "Head Concierge & Relations",
+      "contact_number": "+63 917 444 9999"
+    },
+    {
+      "staff_id": 105,
+      "user_id": 15,
+      "first_name": "Charriel Mae",
+      "last_name": "Ayuban",
+      "position": "General Manager",
+      "contact_number": "+63 917 454545"
     }
   ],
   "GUEST_DETAILS": [

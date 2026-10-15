@@ -163,3 +163,14 @@ export interface StaffAccountWithUser {
   position: string;
   contact_number: string;
 }
+
+export interface UpdateAccountRequest {
+  user_id: number;
+  user_name?: string;
+  password?: string;
+  user_role?: 'admin' | 'staff';
+  first_name?: string;
+  last_name?: string;
+  position?: string;
+  contact_number?: string;
+}

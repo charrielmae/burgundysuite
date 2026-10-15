@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getStaffAccounts, createStaffAccount } from '@/lib/db';
+import {
+  getStaffAccounts,
+  createStaffAccount,
+  updateStaffAccount,
+  deleteStaffAccount,
+} from '@/lib/db';
 import { getCurrentAdminSession } from '@/lib/auth';
-import { NewAccountRequest } from '@/types/database';
+import { NewAccountRequest, UpdateAccountRequest } from '@/types/database';
 
 export async function GET() {
   try {
@@ -84,6 +89,97 @@ export async function POST(request: Request) {
       success: true,
       message: `Account for ${created.first_name} ${created.last_name} (${created.user_role}) created successfully!`,
       data: created,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const session = await getCurrentAdminSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Only logged-in administrators can edit staff accounts.' },
+        { status: 401 }
+      );
+    }
+
+    if (session.user_role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. Only administrators have permission to edit accounts.' },
+        { status: 403 }
+      );
+    }
+
+    const body: UpdateAccountRequest = await request.json();
+
+    if (!body.user_id) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required.' },
+        { status: 400 }
+      );
+    }
+
+    const updated = await updateStaffAccount(body);
+
+    return NextResponse.json({
+      success: true,
+      message: `Staff account for ${updated.first_name} ${updated.last_name} updated successfully!`,
+      data: updated,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getCurrentAdminSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Only logged-in administrators can delete staff accounts.' },
+        { status: 401 }
+      );
+    }
+
+    if (session.user_role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. Only administrators have permission to delete accounts.' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const idParam = searchParams.get('id');
+    const userId = Number(idParam);
+
+    if (!userId || isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Valid staff user ID is required.' },
+        { status: 400 }
+      );
+    }
+
+    // Safety: prevent self-deletion
+    if (session.user_id === userId) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot delete your own active administrator account.' },
+        { status: 400 }
+      );
+    }
+
+    await deleteStaffAccount(userId);
+
+    return NextResponse.json({
+      success: true,
+      message: `Staff account #${userId} has been successfully removed.`,
     });
   } catch (error) {
     return NextResponse.json(

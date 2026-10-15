@@ -22,6 +22,7 @@ import {
   RoomStatus,
   NewAccountRequest,
   StaffAccountWithUser,
+  UpdateAccountRequest,
 } from '@/types/database';
 
 interface DatabaseData {
@@ -1121,5 +1122,114 @@ export async function createStaffAccount(req: NewAccountRequest): Promise<StaffA
     ...newUser,
     ...newStaff,
   };
+}
+
+export async function updateStaffAccount(req: UpdateAccountRequest): Promise<StaffAccountWithUser> {
+  const db = readDb();
+  const user = db.USER_ACCOUNT.find((u) => u.user_id === Number(req.user_id));
+  const staff = db.STAFF_DETAILS.find((s) => s.user_id === Number(req.user_id));
+
+  if (!user || !staff) {
+    throw new Error(`Staff account #${req.user_id} not found.`);
+  }
+
+  // If username changed, check for uniqueness
+  if (req.user_name && req.user_name.trim().toLowerCase() !== user.user_name.toLowerCase()) {
+    const existing = db.USER_ACCOUNT.find(
+      (u) => u.user_id !== user.user_id && u.user_name.trim().toLowerCase() === req.user_name!.trim().toLowerCase()
+    );
+    if (existing) {
+      throw new Error(`Username "${req.user_name}" is already taken.`);
+    }
+    user.user_name = req.user_name.trim();
+  }
+
+  if (req.password && req.password.trim()) {
+    user.password_hash = req.password.trim();
+  }
+
+  if (req.user_role) {
+    user.user_role = req.user_role;
+  }
+
+  if (req.first_name) staff.first_name = req.first_name.trim();
+  if (req.last_name) staff.last_name = req.last_name.trim();
+  if (req.position) staff.position = req.position.trim();
+  if (req.contact_number) staff.contact_number = req.contact_number.trim();
+
+  saveDb(db);
+
+  // Sync to Cloudflare D1
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `UPDATE USER_ACCOUNT SET user_name = ?, password_hash = ?, user_role = ? WHERE user_id = ?;`,
+          params: [user.user_name, user.password_hash, user.user_role, user.user_id],
+        },
+        {
+          sql: `UPDATE STAFF_DETAILS SET first_name = ?, last_name = ?, position = ?, contact_number = ? WHERE user_id = ?;`,
+          params: [staff.first_name, staff.last_name, staff.position, staff.contact_number, user.user_id],
+        },
+        {
+          sql: `UPDATE users SET name = ? WHERE id = ?;`,
+          params: [`${staff.first_name} ${staff.last_name}`, String(user.user_id)],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Updated staff account #${user.user_id} (${user.user_name})`);
+    } catch (d1Err) {
+      console.error('[Cloudflare D1 updateStaffAccount sync error]:', d1Err);
+    }
+  }
+
+  return {
+    ...user,
+    ...staff,
+  };
+}
+
+export async function deleteStaffAccount(userId: number): Promise<boolean> {
+  const db = readDb();
+  const userIndex = db.USER_ACCOUNT.findIndex((u) => u.user_id === Number(userId));
+  const staffIndex = db.STAFF_DETAILS.findIndex((s) => s.user_id === Number(userId));
+
+  if (userIndex === -1 && staffIndex === -1) {
+    throw new Error(`Staff account #${userId} not found.`);
+  }
+
+  // Remove from arrays
+  if (staffIndex !== -1) {
+    db.STAFF_DETAILS.splice(staffIndex, 1);
+  }
+  if (userIndex !== -1) {
+    db.USER_ACCOUNT.splice(userIndex, 1);
+  }
+
+  saveDb(db);
+
+  // Sync deletion to Cloudflare D1
+  if (isCloudflareD1Configured()) {
+    try {
+      await batchCloudflareD1([
+        {
+          sql: `DELETE FROM STAFF_DETAILS WHERE user_id = ?;`,
+          params: [userId],
+        },
+        {
+          sql: `DELETE FROM USER_ACCOUNT WHERE user_id = ?;`,
+          params: [userId],
+        },
+        {
+          sql: `DELETE FROM users WHERE id = ?;`,
+          params: [String(userId)],
+        },
+      ]);
+      console.log(`[Cloudflare D1] Deleted staff account #${userId}`);
+    } catch (d1Err) {
+      console.error('[Cloudflare D1 deleteStaffAccount sync error]:', d1Err);
+    }
+  }
+
+  return true;
 }
 
