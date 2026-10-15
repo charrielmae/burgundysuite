@@ -65,23 +65,23 @@ export default function RoomInventoryGrid({
       {/* Title & Filter Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-serif text-2xl font-bold text-slate-900 tracking-wide">
+          <h3 className="font-serif text-2xl font-bold text-white tracking-wide">
             Room Inventory & Live Availability
           </h3>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-white/60 mt-1">
             Real-time occupancy status across all retreat wings and floors
           </p>
         </div>
 
         {/* Right: Tab Filters & Add Suite Button */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs">
+          <div className="flex items-center p-1 rounded-xl bg-[#240A10] border border-[#5A1C2A] text-xs">
             <button
               onClick={() => setFilter('all')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                 filter === 'all'
-                  ? 'bg-white text-slate-900 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#5A1C2A] text-[#E5C378] font-bold shadow-md'
+                  : 'text-white/70 hover:text-white'
               }`}
             >
               All ({rooms.length})
@@ -90,8 +90,8 @@ export default function RoomInventoryGrid({
               onClick={() => setFilter('available')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                 filter === 'available'
-                  ? 'bg-white text-emerald-700 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 font-bold shadow-md'
+                  : 'text-white/70 hover:text-white'
               }`}
             >
               Available ({availableCount})
@@ -100,8 +100,8 @@ export default function RoomInventoryGrid({
               onClick={() => setFilter('occupied')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                 filter === 'occupied'
-                  ? 'bg-white text-rose-700 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40 font-bold shadow-md'
+                  : 'text-white/70 hover:text-white'
               }`}
             >
               Occupied ({occupiedCount})
@@ -110,8 +110,8 @@ export default function RoomInventoryGrid({
               onClick={() => setFilter('maintenance')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer ${
                 filter === 'maintenance'
-                  ? 'bg-white text-amber-700 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40 font-bold shadow-md'
+                  : 'text-white/70 hover:text-white'
               }`}
             >
               Maintenance ({maintenanceCount})
@@ -121,9 +121,9 @@ export default function RoomInventoryGrid({
           {onOpenAddSuite && (
             <button
               onClick={onOpenAddSuite}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#5A1C2A] hover:bg-[#6D2233] text-[#E5C378] border border-[#E5C378]/30 text-xs font-semibold shadow-sm transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 text-white" />
+              <Plus className="w-3.5 h-3.5 text-[#E5C378]" />
               <span>Add Suite</span>
             </button>
           )}
@@ -138,26 +138,26 @@ export default function RoomInventoryGrid({
           return (
             <div
               key={room.room_id}
-              className={`p-5 rounded-2xl bg-white border transition-all duration-300 shadow-xs flex flex-col justify-between ${
+              className={`p-5 rounded-2xl bg-[#381018]/90 border transition-all duration-300 shadow-xl flex flex-col justify-between ${
                 room.room_status === 'occupied'
-                  ? 'border-rose-100 hover:border-rose-300'
+                  ? 'border-rose-900/60 hover:border-rose-500/50'
                   : room.room_status === 'available'
-                  ? 'border-emerald-100 hover:border-emerald-300'
-                  : 'border-amber-100 hover:border-amber-300'
+                  ? 'border-emerald-900/60 hover:border-emerald-500/50'
+                  : 'border-amber-900/60 hover:border-amber-500/50'
               }`}
             >
               {/* Card Header: Room # and Status Badge */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-serif font-bold text-slate-800 text-base">
+                  <div className="w-10 h-10 rounded-xl bg-[#240A10] border border-[#5A1C2A] flex items-center justify-center font-serif font-bold text-[#E5C378] text-base shadow-xs">
                     {room.room_number}
                   </div>
                   <div>
-                    <h4 className="font-serif font-bold text-base text-slate-900">
+                    <h4 className="font-serif font-bold text-base text-white">
                       Room {room.room_number}
                     </h4>
-                    <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                      <Layers className="w-3 h-3 text-slate-400" />
+                    <span className="text-[11px] text-white/50 flex items-center gap-1 font-medium">
+                      <Layers className="w-3 h-3 text-[#E5C378]/70" />
                       Floor {room.floor_number}
                     </span>
                   </div>
@@ -167,24 +167,24 @@ export default function RoomInventoryGrid({
               </div>
 
               {/* Suite Information */}
-              <div className="py-3 border-y border-slate-100 space-y-2 text-xs">
+              <div className="py-3 border-y border-[#5A1C2A]/70 space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Category:</span>
-                  <span className="font-semibold text-slate-800">{room.room_type}</span>
+                  <span className="text-white/60">Category:</span>
+                  <span className="font-semibold text-white">{room.room_type}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Max Capacity:</span>
-                  <span className="text-slate-700">{room.room_capacity} Guests</span>
+                  <span className="text-white/60">Max Capacity:</span>
+                  <span className="text-white/80">{room.room_capacity} Guests</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Nightly Rate:</span>
-                  <span className="font-bold text-[#741B2D]">₱{room.rate_per_night} / night</span>
+                  <span className="text-white/60">Nightly Rate:</span>
+                  <span className="font-bold text-[#E5C378]">₱{room.rate_per_night} / night</span>
                 </div>
               </div>
 
               {/* Status Switcher Control */}
               <div className="pt-4 flex items-center justify-between gap-3">
-                <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
+                <span className="text-[11px] text-white/50 uppercase tracking-wider font-semibold">
                   Change Status:
                 </span>
                 <select
@@ -193,11 +193,11 @@ export default function RoomInventoryGrid({
                   onChange={(e) =>
                     handleStatusSelect(room.room_id, e.target.value as RoomStatus)
                   }
-                  className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium focus:outline-none focus:border-[#741B2D] cursor-pointer disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg bg-[#240A10] border border-[#5A1C2A] text-white text-xs font-medium focus:outline-none focus:border-[#E5C378] cursor-pointer disabled:opacity-50"
                 >
-                  <option value="available">Set Available</option>
-                  <option value="occupied">Set Occupied</option>
-                  <option value="maintenance">Set Maintenance</option>
+                  <option value="available" className="bg-[#240A10] text-white">Set Available</option>
+                  <option value="occupied" className="bg-[#240A10] text-white">Set Occupied</option>
+                  <option value="maintenance" className="bg-[#240A10] text-white">Set Maintenance</option>
                 </select>
               </div>
             </div>

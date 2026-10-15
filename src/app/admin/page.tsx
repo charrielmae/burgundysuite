@@ -229,9 +229,9 @@ export default function AdminPage() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center text-slate-800">
-        <div className="w-12 h-12 rounded-full border-2 border-[#741B2D] border-t-transparent animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-[0.2em] text-[#741B2D] font-bold">
+      <main className="min-h-screen bg-[#240A10] flex flex-col items-center justify-center text-white">
+        <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-[0.2em] text-[#E5C378] font-bold">
           Verifying Management Credentials...
         </p>
       </main>
@@ -240,7 +240,7 @@ export default function AdminPage() {
 
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-[#F8F9FA]">
+      <main className="min-h-screen bg-[#240A10]">
         <AdminLoginGate
           onLoginSuccess={(user) => {
             setCurrentUser(user);
@@ -252,14 +252,14 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col selection:bg-[#741B2D] selection:text-white">
+    <main className="min-h-screen bg-gradient-to-b from-[#2B0E14] via-[#240A10] to-[#1A080C] text-[#F5EFEB] flex flex-col selection:bg-[#D4AF37] selection:text-[#2B0E14]">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-900 shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
-          <span className="text-xs font-semibold text-[#741B2D]">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-2xl bg-[#381018] border border-[#E5C378]/60 text-white shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+          <span className="text-xs font-semibold text-[#E5C378]">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+            className="text-white/60 hover:text-white text-xs cursor-pointer"
           >
             ✕
           </button>
@@ -278,8 +278,8 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-12">
         {loading || !kpis ? (
           <div className="py-24 text-center">
-            <div className="w-12 h-12 rounded-full border-2 border-[#741B2D] border-t-transparent animate-spin mx-auto mb-4" />
-            <p className="text-sm text-slate-600 font-medium">Connecting to Burgundy Command Center...</p>
+            <div className="w-12 h-12 rounded-full border-2 border-[#E5C378] border-t-transparent animate-spin mx-auto mb-4" />
+            <p className="text-sm text-white/70 font-medium">Connecting to Burgundy Command Center...</p>
           </div>
         ) : (
           <>
@@ -306,10 +306,10 @@ export default function AdminPage() {
       </div>
 
       {/* Admin Clean Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-6 text-xs text-slate-500">
+      <footer className="mt-auto border-t border-[#5A1C2A]/60 bg-[#1A080C] py-6 text-xs text-white/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>© 2026 Burgundy Suite & Resort — Executive Management Console</span>
-          <span className="text-[11px] text-slate-400">DBMS Schema Compliant • Cloudflare D1 / SQLite</span>
+          <span className="text-[11px] text-white/40">DBMS Schema Compliant • Cloudflare D1 / SQLite</span>
         </div>
       </footer>
 
