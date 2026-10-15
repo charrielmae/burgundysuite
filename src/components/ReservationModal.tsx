@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   X,
   Calendar,
@@ -167,8 +168,14 @@ export default function ReservationModal({
         {/* Modal Top Bar */}
         <div className="px-6 py-5 bg-[#381018] border-b border-[#5A1C2A] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#5A1C2A] border border-[#E5C378]/30 flex items-center justify-center text-[#E5C378] font-serif font-bold text-sm">
-              B
+            <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-[#E5C378]/40 shadow-xs shrink-0">
+              <Image
+                src="/burgundy_logo.png"
+                alt="Burgundy Suite Logo"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <h3 className="font-serif text-lg font-bold text-white tracking-wide">

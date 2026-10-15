@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import {
   Download,
   LogOut,
@@ -26,8 +27,14 @@ export default function AdminHeader({
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Left Side: Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#5A1C2A] text-[#E5C378] border border-[#E5C378]/30 flex items-center justify-center font-serif font-bold text-base shadow-sm">
-            B
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#E5C378]/40 shadow-sm shrink-0">
+            <Image
+              src="/burgundy_logo.png"
+              alt="Burgundy Suite Logo"
+              width={36}
+              height={36}
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h1 className="text-base font-bold text-white font-serif leading-none tracking-wide">

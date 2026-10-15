@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description:
     "A sanctuary of coastal opulence. Experience unmatched elegance at Burgundy Suite & Resort with world-class suites, private beach seclusion, and bespoke hospitality.",
   keywords: ["Burgundy Suite", "Luxury Resort", "Coastal Opulence", "Boutique Hotel", "Emerald Bay"],
+  icons: {
+    icon: "/burgundy_logo.png",
+    shortcut: "/burgundy_logo.png",
+    apple: "/burgundy_logo.png",
+  },
 };
 
 export default function RootLayout({

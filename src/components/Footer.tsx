@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MapPin, Phone, Mail, Globe, Share2, Compass, Award, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
@@ -12,8 +13,14 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#5A1C2A] border border-[#E5C378]/40 flex items-center justify-center text-[#E5C378] font-serif font-bold text-lg">
-                B
+              <div className="relative w-10 h-10 rounded-2xl overflow-hidden border border-[#E5C378]/40 shadow-sm shrink-0">
+                <Image
+                  src="/burgundy_logo.png"
+                  alt="Burgundy Suite Logo"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="flex flex-col">
                 <span className="font-serif tracking-wider text-white text-base font-bold uppercase">

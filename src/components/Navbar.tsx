@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Sparkles, Calendar, ShieldCheck, BookmarkCheck } from 'lucide-react';
 
@@ -25,14 +26,15 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Brand Logo & Title */}
         <Link href="/" className="flex items-center gap-3.5 group">
-          <div
-            className={`w-11 h-11 rounded-full flex items-center justify-center font-serif font-bold text-xl shadow-md transition-all duration-300 ${
-              isAdmin
-                ? 'bg-[#741B2D] text-white border-2 border-[#741B2D]'
-                : 'bg-gradient-to-br from-[#5A1C2A] to-[#2B0E14] border border-[#E5C378]/40 text-[#E5C378] group-hover:border-[#E5C378]'
-            }`}
-          >
-            B
+          <div className="relative w-11 h-11 rounded-2xl overflow-hidden border border-[#E5C378]/50 shadow-md group-hover:border-[#E5C378] group-hover:shadow-[#E5C378]/25 transition-all duration-300 shrink-0">
+            <Image
+              src="/burgundy_logo.png"
+              alt="Burgundy Suite Logo"
+              width={44}
+              height={44}
+              priority
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
           </div>
           <div className="flex flex-col">
             <span

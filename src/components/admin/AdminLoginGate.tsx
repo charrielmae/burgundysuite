@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ShieldCheck,
   Lock,
@@ -78,8 +79,15 @@ export default function AdminLoginGate({ onLoginSuccess }: AdminLoginGateProps) 
       <div className="w-full max-w-md bg-[#381018]/95 border border-[#5A1C2A] text-white rounded-3xl shadow-2xl p-8 relative z-10 backdrop-blur-md">
         {/* Emblem & Title */}
         <div className="text-center space-y-3 pb-6 border-b border-[#5A1C2A]/70">
-          <div className="w-16 h-16 rounded-full bg-[#5A1C2A] border-2 border-[#E5C378]/40 flex items-center justify-center text-[#E5C378] font-serif font-bold text-2xl mx-auto shadow-lg">
-            B
+          <div className="relative w-20 h-20 rounded-3xl overflow-hidden border-2 border-[#E5C378]/50 mx-auto shadow-2xl">
+            <Image
+              src="/burgundy_logo.png"
+              alt="Burgundy Suite Logo"
+              width={80}
+              height={80}
+              priority
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.25em] text-[#E5C378] uppercase">
