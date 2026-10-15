@@ -245,14 +245,56 @@ const INITIAL_DATA: DatabaseData = {
       badge: 'Up to 6 Guests',
       features: ['Direct Helipad Transfer', 'Private Elevator Keycard', '360° Glass Ocean View'],
     },
+    {
+      room_type_id: 5,
+      room_type: 'Oceanview Sunset Villa',
+      room_capacity: 4,
+      rate_per_night: 550.0,
+      description: 'Secluded seaside villa with private infinity plunge pool, oceanview sunset deck, and butler service.',
+      image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+      badge: 'Up to 4 Guests',
+      features: ['Private Plunge Pool', 'Panoramic Sunset Deck', '24/7 Butler Service'],
+    },
+    {
+      room_type_id: 6,
+      room_type: 'Family Suite',
+      room_capacity: 10,
+      rate_per_night: 3200.0,
+      description: 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
+      image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+      badge: 'Up to 10 Guests',
+      features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
+    },
+    {
+      room_type_id: 7,
+      room_type: 'Royal Emerald Penthouse',
+      room_capacity: 8,
+      rate_per_night: 4500.0,
+      description: 'Ultra-exclusive 360-degree top-floor penthouse with private helicopter charter and infinity ocean plunge pool.',
+      image_url: '/api/media/suites/1792035835546-emerald-villa-ocean.png',
+      badge: 'Up to 8 Guests',
+      features: ['Helipad VIP Transfer', 'Private Infinity Plunge Pool', 'Personal Dedicated Butler'],
+    },
+    {
+      room_type_id: 8,
+      room_type: 'Sapphire Ocean Villa',
+      room_capacity: 4,
+      rate_per_night: 750.0,
+      description: 'Exclusive ocean villa with infinity plunge pool and sunset panorama.',
+      image_url: '/api/media/suites/test-suite.png',
+      badge: 'Up to 4 Guests',
+      features: ['Infinity Plunge Pool', 'Personal Butler', 'Sunset Deck'],
+    },
   ],
   ROOM_DETAILS: [
     { room_id: 1, room_type_id: 1, room_number: 101, floor_number: 1, room_status: 'occupied' },
-    { room_id: 2, room_type_id: 1, room_number: 102, floor_number: 1, room_status: 'available' },
-    { room_id: 3, room_type_id: 2, room_number: 201, floor_number: 2, room_status: 'maintenance' },
-    { room_id: 4, room_type_id: 2, room_number: 202, floor_number: 2, room_status: 'occupied' },
-    { room_id: 5, room_type_id: 3, room_number: 301, floor_number: 3, room_status: 'occupied' },
-    { room_id: 6, room_type_id: 4, room_number: 401, floor_number: 4, room_status: 'available' },
+    { room_id: 2, room_type_id: 2, room_number: 102, floor_number: 1, room_status: 'available' },
+    { room_id: 3, room_type_id: 3, room_number: 201, floor_number: 2, room_status: 'occupied' },
+    { room_id: 4, room_type_id: 5, room_number: 202, floor_number: 2, room_status: 'maintenance' },
+    { room_id: 5, room_type_id: 6, room_number: 301, floor_number: 3, room_status: 'available' },
+    { room_id: 6, room_type_id: 8, room_number: 302, floor_number: 3, room_status: 'available' },
+    { room_id: 7, room_type_id: 4, room_number: 401, floor_number: 4, room_status: 'occupied' },
+    { room_id: 8, room_type_id: 7, room_number: 501, floor_number: 5, room_status: 'available' },
   ],
   ROOM_BOOKING: [
     {
@@ -268,7 +310,7 @@ const INITIAL_DATA: DatabaseData = {
     {
       booking_id: 1002,
       user_id: 5,
-      room_id: 4,
+      room_id: 3,
       booking_date: '2026-10-08',
       check_in_date: '2026-10-10',
       check_out_date: '2026-10-16',
@@ -278,7 +320,7 @@ const INITIAL_DATA: DatabaseData = {
     {
       booking_id: 1003,
       user_id: 6,
-      room_id: 5,
+      room_id: 7,
       booking_date: '2026-10-05',
       check_in_date: '2026-10-11',
       check_out_date: '2026-10-15',
@@ -390,10 +432,22 @@ export async function createRoomType(
 
   db.ROOM_TYPE_DETAILS.push(newType);
 
-  // Automatically create a physical room for this suite type in ROOM_DETAILS
+  // Automatically create a physical room for this suite type in ROOM_DETAILS with unique room number
   const newRoomId = Math.max(...db.ROOM_DETAILS.map((r) => r.room_id), 0) + 1;
-  const floorNumber = Math.min(Math.floor(newRoomId / 2) + 1, 6);
-  const roomNumber = floorNumber * 100 + (newRoomId % 2 === 0 ? 2 : 1);
+  const existingNumbers = new Set(db.ROOM_DETAILS.map((r) => r.room_number));
+  let floorNumber = 1;
+  let roomNumber = 101;
+  for (let f = 1; f <= 10; f++) {
+    for (let r = 1; r <= 9; r++) {
+      const candidate = f * 100 + r;
+      if (!existingNumbers.has(candidate)) {
+        floorNumber = f;
+        roomNumber = candidate;
+        break;
+      }
+    }
+    if (!existingNumbers.has(roomNumber)) break;
+  }
 
   const newRoom: RoomDetails = {
     room_id: newRoomId,

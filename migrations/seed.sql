@@ -24,37 +24,39 @@ INSERT INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationali
 (6, 'Marcus', 'Aurelius-Tan', '1988-11-09', 'Singaporean', 'Married', '+63 919 800 4567', 'marcus.tan@solarisventures.sg', '12 Ardmore Park, #20-01, Singapore'),
 (7, 'Sophia', 'Laurent', '1995-08-30', 'French', 'Single', '+63 920 800 5678', 'sophia.laurent@parisinspire.fr', '18 Rue de la Paix, 75002 Paris, France');
 
--- 4. Insert ROOM_TYPE_DETAILS
+-- 4. Insert ROOM_TYPE_DETAILS (8 curated suite categories)
 INSERT INTO ROOM_TYPE_DETAILS (room_type_id, room_type, room_capacity, rate_per_night) VALUES
 (1, 'Deluxe Suite', 2, 250.00),
 (2, 'Executive King', 3, 420.00),
 (3, 'Presidential Suite', 4, 750.00),
-(4, 'Penthouse Haven', 6, 1200.00);
+(4, 'Penthouse Haven', 6, 1200.00),
+(5, 'Oceanview Sunset Villa', 4, 550.00),
+(6, 'Family Suite', 10, 3200.00),
+(7, 'Royal Emerald Penthouse', 8, 4500.00),
+(8, 'Sapphire Ocean Villa', 4, 750.00);
 
--- 5. Insert ROOM_DETAILS
+-- 5. Insert ROOM_DETAILS (8 realistic suites across 5 floors)
 INSERT INTO ROOM_DETAILS (room_id, room_type_id, room_number, floor_number, room_status) VALUES
 (1, 1, 101, 1, 'occupied'),
-(2, 1, 102, 1, 'available'),
-(3, 2, 201, 2, 'maintenance'),
-(4, 2, 202, 2, 'occupied'),
-(5, 3, 301, 3, 'occupied'),
-(6, 4, 401, 4, 'available');
+(2, 2, 102, 1, 'available'),
+(3, 3, 201, 2, 'occupied'),
+(4, 5, 202, 2, 'maintenance'),
+(5, 6, 301, 3, 'available'),
+(6, 8, 302, 3, 'available'),
+(7, 4, 401, 4, 'occupied'),
+(8, 7, 501, 5, 'available');
 
 -- 6. Insert ROOM_BOOKING
--- Room 101: Julian Vance, checked-in, check-out today (Due Checkout!)
--- Room 202: Eleanor Sterling, checked-in
--- Room 301: Marcus Tan, checked-in
--- Room 102: Past completed booking for Sophia Laurent
--- Total revenue calculated across paid stays matches ₱7,090.00 KPI benchmark
 INSERT INTO ROOM_BOOKING (booking_id, user_id, room_id, booking_date, check_in_date, check_out_date, total_amount, booking_status) VALUES
-(1001, 4, 1, '2026-10-11', '2026-10-12', '2026-10-14', 500.00, 'checked-in'),
-(1002, 5, 4, '2026-10-08', '2026-10-10', '2026-10-16', 2520.00, 'checked-in'),
-(1003, 6, 5, '2026-10-05', '2026-10-11', '2026-10-15', 3000.00, 'checked-in'),
-(1004, 7, 2, '2026-10-02', '2026-10-05', '2026-10-09', 1070.00, 'completed');
+(1001, 4, 1, '2026-10-11', '2026-10-12', '2026-10-16', 1000.00, 'checked-in'),
+(1002, 5, 3, '2026-10-08', '2026-10-10', '2026-10-16', 4500.00, 'checked-in'),
+(1003, 6, 7, '2026-10-05', '2026-10-11', '2026-10-17', 7200.00, 'checked-in'),
+(1004, 7, 2, '2026-10-02', '2026-10-05', '2026-10-09', 1680.00, 'completed');
 
--- 7. Insert PAYMENT_DETAILS (Sum of paid = ₱500 + ₱2520 + ₱3000 + ₱1070 = ₱7,090.00)
+-- 7. Insert PAYMENT_DETAILS
 INSERT INTO PAYMENT_DETAILS (payment_id, booking_id, payment_method, amount, payment_status, payment_date) VALUES
-(501, 1001, 'Credit Card (Visa Signature)', 500.00, 'paid', '2026-10-11 15:42:10'),
-(502, 1002, 'Amex Centurion Card', 2520.00, 'paid', '2026-10-08 19:12:04'),
-(503, 1003, 'Wire Transfer / Swift', 3000.00, 'paid', '2026-10-05 11:05:32'),
-(504, 1004, 'Mastercard World Elite', 1070.00, 'paid', '2026-10-02 14:28:55');
+(501, 1001, 'Credit Card (Visa Signature)', 1000.00, 'paid', '2026-10-11 15:42:10'),
+(502, 1002, 'Amex Centurion Card', 4500.00, 'paid', '2026-10-08 19:12:04'),
+(503, 1003, 'Wire Transfer / Swift', 7200.00, 'paid', '2026-10-05 11:05:32'),
+(504, 1004, 'Mastercard World Elite', 1680.00, 'paid', '2026-10-02 14:28:55');
+

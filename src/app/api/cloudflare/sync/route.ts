@@ -22,12 +22,18 @@ export async function POST() {
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
     const seedSql = fs.readFileSync(seedPath, 'utf8');
 
-    // Split SQL by semicolon into individual valid statements
+    // Split SQL by semicolon into individual valid statements, stripping comment lines
     const parseStatements = (raw: string) =>
       raw
         .split(';')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0 && !s.startsWith('--'))
+        .map((s) =>
+          s
+            .split('\n')
+            .filter((line) => !line.trim().startsWith('--'))
+            .join('\n')
+            .trim()
+        )
+        .filter((s) => s.length > 0)
         .map((sql) => ({ sql: sql + ';', params: [] }));
 
     const schemaStatements = parseStatements(schemaSql);
