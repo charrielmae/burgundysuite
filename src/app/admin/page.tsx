@@ -276,12 +276,7 @@ export default function AdminPage() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenAddSuite={() => setIsAddSuiteOpen(true)}
-        onOpenCloudflareModal={() => setIsCloudflareOpen(true)}
-        isCloudflareConnected={isCloudflareConnected}
-        onSimulateCheckouts={handleSimulateCheckouts}
         onExportReport={handleExportReport}
-        onResetData={handleResetData}
-        pendingCheckoutsCount={kpis?.pending_checkouts_today_count || 0}
       />
 
       {/* Main Command Center Body */}
