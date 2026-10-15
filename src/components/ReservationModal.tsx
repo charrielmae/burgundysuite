@@ -8,7 +8,6 @@ import {
   User,
   Wallet,
   CheckCircle2,
-  Sparkles,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
@@ -592,10 +591,7 @@ export default function ReservationModal({
                   {loading ? (
                     <span>Processing Reservation...</span>
                   ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Confirm Reservation</span>
-                    </>
+                    <span>Confirm Reservation</span>
                   )}
                 </button>
               </div>
