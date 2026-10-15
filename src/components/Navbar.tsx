@@ -115,91 +115,104 @@ export default function Navbar({ onOpenBooking, onOpenMyBookings }: NavbarProps)
           {!isAdmin && (
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle navigation menu"
-              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open navigation menu"
               className="md:hidden p-2 rounded-xl bg-[#240A10] border border-[#5A1C2A] text-white hover:text-[#E5C378] transition-colors cursor-pointer flex items-center justify-center shadow-xs ml-1"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-5 h-5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Mobile Animated Navigation Drawer */}
-      {mobileMenuOpen && !isAdmin && (
-        <div className="md:hidden border-t border-[#5A1C2A] bg-[#2B0E14]/98 backdrop-blur-2xl shadow-2xl animate-in slide-in-from-top-4 duration-300 px-5 py-6">
-          <nav className="flex flex-col space-y-3">
-            <Link
-              href="#home"
-              onClick={handleMobileNavClick}
-              className="flex items-center justify-between py-2 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
-            >
-              <span>Home</span>
-              <span className="text-[#E5C378]/50 text-xs">01</span>
-            </Link>
-            <Link
-              href="#haven"
-              onClick={handleMobileNavClick}
-              className="flex items-center justify-between py-2 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
-            >
-              <span>The Haven</span>
-              <span className="text-[#E5C378]/50 text-xs">02</span>
-            </Link>
-            <Link
-              href="#suites"
-              onClick={handleMobileNavClick}
-              className="flex items-center justify-between py-2 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
-            >
-              <span>Suites & Villa</span>
-              <span className="text-[#E5C378]/50 text-xs">03</span>
-            </Link>
-            <Link
-              href="#amenities"
-              onClick={handleMobileNavClick}
-              className="flex items-center justify-between py-2 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
-            >
-              <span>Amenities</span>
-              <span className="text-[#E5C378]/50 text-xs">04</span>
-            </Link>
-            {onOpenMyBookings && (
+      {/* Mobile Right Sidebar Drawer + Overlay */}
+      {!isAdmin && (
+        <>
+          {/* Dark overlay backdrop */}
+          <div
+            className={`md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+              mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Sliding sidebar panel */}
+          <div
+            className={`md:hidden fixed top-0 right-0 z-50 h-full w-72 bg-[#2B0E14] border-l border-[#5A1C2A]/60 shadow-2xl transition-transform duration-300 ease-in-out ${
+              mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between px-5 h-20 border-b border-[#5A1C2A]/60">
+              <span className="font-serif text-sm font-bold tracking-[0.15em] uppercase text-white">
+                Menu
+              </span>
               <button
                 type="button"
-                onClick={() => {
-                  handleMobileNavClick();
-                  onOpenMyBookings();
-                }}
-                className="flex items-center justify-between py-2.5 text-sm font-semibold tracking-wider text-[#E5C378] hover:text-white border-b border-[#5A1C2A]/40 transition-colors uppercase text-left w-full cursor-pointer"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu"
+                className="p-2 rounded-xl bg-[#381018] border border-[#5A1C2A] text-white hover:text-[#E5C378] transition-colors cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <BookmarkCheck className="w-4 h-4 text-[#E5C378]" />
-                  Verify Booking
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#5A1C2A] text-[#E5C378] border border-[#E5C378]/30">
-                  Guest
-                </span>
+                <X className="w-5 h-5" />
               </button>
-            )}
-          </nav>
+            </div>
 
-          <div className="pt-4">
-            <button
-              type="button"
-              onClick={() => {
-                handleMobileNavClick();
-                if (onOpenBooking) {
-                  onOpenBooking();
-                } else {
-                  window.location.href = '/#suites';
-                }
-              }}
-              className="w-full py-3 rounded-full text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-[#D4AF37] to-[#E5C378] text-[#2B0E14] shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Reserve Your Stay</span>
-            </button>
+            {/* Sidebar Nav Links */}
+            <nav className="flex flex-col px-5 py-6 space-y-1">
+              <Link
+                href="#home"
+                onClick={handleMobileNavClick}
+                className="flex items-center justify-between py-3 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
+              >
+                <span>Home</span>
+                <span className="text-[#E5C378]/50 text-xs">01</span>
+              </Link>
+              <Link
+                href="#haven"
+                onClick={handleMobileNavClick}
+                className="flex items-center justify-between py-3 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
+              >
+                <span>The Haven</span>
+                <span className="text-[#E5C378]/50 text-xs">02</span>
+              </Link>
+              <Link
+                href="#suites"
+                onClick={handleMobileNavClick}
+                className="flex items-center justify-between py-3 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
+              >
+                <span>Suites & Villa</span>
+                <span className="text-[#E5C378]/50 text-xs">03</span>
+              </Link>
+              <Link
+                href="#amenities"
+                onClick={handleMobileNavClick}
+                className="flex items-center justify-between py-3 text-sm font-semibold tracking-wider text-[#F5EFEB] hover:text-[#E5C378] border-b border-[#5A1C2A]/40 transition-colors uppercase"
+              >
+                <span>Amenities</span>
+                <span className="text-[#E5C378]/50 text-xs">04</span>
+              </Link>
+              {onOpenMyBookings && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleMobileNavClick();
+                    onOpenMyBookings();
+                  }}
+                  className="flex items-center justify-between py-3 text-sm font-semibold tracking-wider text-[#E5C378] hover:text-white border-b border-[#5A1C2A]/40 transition-colors uppercase text-left w-full cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <BookmarkCheck className="w-4 h-4 text-[#E5C378]" />
+                    Verify Booking
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#5A1C2A] text-[#E5C378] border border-[#E5C378]/30">
+                    Guest
+                  </span>
+                </button>
+              )}
+            </nav>
           </div>
-        </div>
+        </>
       )}
     </header>
   );
