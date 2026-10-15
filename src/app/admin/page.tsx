@@ -11,6 +11,7 @@ import BookingsTable from '@/components/admin/BookingsTable';
 import PaymentLogs from '@/components/admin/PaymentLogs';
 import AddSuiteModal from '@/components/admin/AddSuiteModal';
 import CloudflareD1Modal from '@/components/admin/CloudflareD1Modal';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Footer from '@/components/Footer';
 import {
   AdminKPIs as AdminKPIsType,
@@ -19,6 +20,7 @@ import {
   RoomStatus,
 } from '@/types/database';
 import { AuthenticatedAdmin } from '@/lib/db';
+import { RotateCcw, Clock } from 'lucide-react';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<AuthenticatedAdmin | null>(null);
@@ -32,6 +34,10 @@ export default function AdminPage() {
   const [isAddSuiteOpen, setIsAddSuiteOpen] = useState(false);
   const [isCloudflareOpen, setIsCloudflareOpen] = useState(false);
   const [isCloudflareConnected, setIsCloudflareConnected] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -137,34 +143,47 @@ export default function AdminPage() {
     }
   };
 
-  // Simulate Due Checkouts
-  const handleSimulateCheckouts = async () => {
+  // Simulate Due Checkouts Modal Confirmation
+  const handleSimulateCheckouts = () => {
+    setIsSimulateModalOpen(true);
+  };
+
+  const executeSimulateCheckouts = async () => {
     try {
+      setIsSimulating(true);
       const res = await fetch('/api/admin/simulate-checkout', { method: 'POST' });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error);
 
-      showToast(data.message || 'Simulated checkout executed successfully.');
+      showToast(data.message || 'Simulated checkouts executed successfully.');
+      setIsSimulateModalOpen(false);
       await loadData();
     } catch (err) {
       showToast(`Simulation failed: ${(err as Error).message}`);
+    } finally {
+      setIsSimulating(false);
     }
   };
 
-  // Reset to default seed
-  const handleResetData = async () => {
-    if (!confirm('Reset database to original default seed data? All custom test records will be refreshed.')) {
-      return;
-    }
+  // Reset to default seed Modal Confirmation
+  const handleResetData = () => {
+    setIsResetModalOpen(true);
+  };
+
+  const executeResetData = async () => {
     try {
+      setIsResetting(true);
       const res = await fetch('/api/admin/reset', { method: 'POST' });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error);
 
-      showToast('Database reset to original benchmark state.');
+      showToast('Database successfully reset to original benchmark state.');
+      setIsResetModalOpen(false);
       await loadData();
     } catch (err) {
       showToast(`Reset failed: ${(err as Error).message}`);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -325,6 +344,68 @@ export default function AdminPage() {
           setIsCloudflareConnected(connected);
           loadData();
         }}
+      />
+
+      {/* Database Reset Benchmark Modal */}
+      <ConfirmModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={executeResetData}
+        isLoading={isResetting}
+        title="Reset Benchmark Database"
+        variant="warning"
+        confirmLabel="Reset to Seed State"
+        cancelLabel="Cancel"
+        icon={<RotateCcw className="w-5 h-5 text-amber-600" />}
+        description={
+          <p>
+            Are you sure you want to reset the Burgundy database to its original benchmark demo state?
+            All newly created suites, test reservations, and payment records will be refreshed back to seed data.
+          </p>
+        }
+        detailsCard={
+          <div className="space-y-1 text-slate-600">
+            <div className="flex items-center gap-2 text-amber-800 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span>Resets 7 DBMS tables: USER_ACCOUNT, STAFF, GUEST, ROOMS, BOOKINGS, PAYMENTS</span>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Useful for refreshing demonstration environments and running new booking simulations.
+            </div>
+          </div>
+        }
+      />
+
+      {/* Simulate Checkouts Modal */}
+      <ConfirmModal
+        isOpen={isSimulateModalOpen}
+        onClose={() => setIsSimulateModalOpen(false)}
+        onConfirm={executeSimulateCheckouts}
+        isLoading={isSimulating}
+        title="Simulate Due Checkouts"
+        variant="burgundy"
+        confirmLabel="Execute Due Checkouts"
+        cancelLabel="Cancel"
+        icon={<Clock className="w-5 h-5 text-[#741B2D]" />}
+        description={
+          <p>
+            This action will automatically process check-out for all checked-in reservations whose departure date has been reached.
+            All respective rooms will be restored to <strong className="text-emerald-700">Available</strong> inventory and synced across Cloudflare D1.
+          </p>
+        }
+        detailsCard={
+          <div className="flex items-center justify-between text-xs">
+            <div>
+              <span className="text-slate-400 text-[10px] uppercase font-bold block">Pending Due Departures</span>
+              <span className="font-bold text-slate-900 text-sm">
+                {kpis?.pending_checkouts_today_count || 0} reservations pending
+              </span>
+            </div>
+            <div className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+              Automatic Room Release
+            </div>
+          </div>
+        }
       />
     </main>
   );

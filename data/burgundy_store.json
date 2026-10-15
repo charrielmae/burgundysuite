@@ -63,6 +63,14 @@
       "user_role": "guest",
       "acc_status": "active",
       "created_date": "2026-10-15T03:43:58.009Z"
+    },
+    {
+      "user_id": 9,
+      "user_name": "guest_si_7115",
+      "password_hash": "$argon2id$guest_session_hash",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-15T03:59:27.115Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -146,6 +154,17 @@
       "contact_number": "+377 98 98 00 11",
       "email_address": "isabella.montgomery@monaco-yachts.mc",
       "address": "15 Boulevard de Suisse, Monte Carlo, Monaco"
+    },
+    {
+      "user_id": 9,
+      "first_name": "si",
+      "last_name": "kuan",
+      "birth_date": "1992-05-15",
+      "nationality": "American",
+      "civil_status": "Single",
+      "contact_number": "+63 917 829 4100",
+      "email_address": "j1027@gmail.com",
+      "address": "100 Ocean Crest Blvd, Sapphire Coast"
     }
   ],
   "ROOM_TYPE_DETAILS": [
@@ -363,6 +382,16 @@
       "check_out_date": "2026-10-24",
       "total_amount": 18000,
       "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1006,
+      "user_id": 9,
+      "room_id": 8,
+      "booking_date": "2026-10-15",
+      "check_in_date": "2026-10-16",
+      "check_out_date": "2026-10-19",
+      "total_amount": 9600,
+      "booking_status": "completed"
     }
   ],
   "PAYMENT_DETAILS": [
@@ -405,6 +434,14 @@
       "amount": 18000,
       "payment_status": "paid",
       "payment_date": "2026-10-15T03:43:58.009Z"
+    },
+    {
+      "payment_id": 506,
+      "booking_id": 1006,
+      "payment_method": "Credit Card (Visa Signature)",
+      "amount": 9600,
+      "payment_status": "paid",
+      "payment_date": "2026-10-15T03:59:27.115Z"
     }
   ]
 }

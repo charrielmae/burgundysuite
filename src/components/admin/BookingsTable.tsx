@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { BookingWithDetails } from '@/types/database';
 import { LogOut, Calendar, User, CheckCircle2, Clock } from 'lucide-react';
 
+import ConfirmModal from './ConfirmModal';
+
 interface BookingsTableProps {
   bookings: BookingWithDetails[];
   onCheckOut: (bookingId: number) => Promise<void>;
@@ -12,6 +14,7 @@ interface BookingsTableProps {
 export default function BookingsTable({ bookings, onCheckOut }: BookingsTableProps) {
   const [filter, setFilter] = useState<'active' | 'upcoming' | 'completed' | 'all'>('active');
   const [checkingOutId, setCheckingOutId] = useState<number | null>(null);
+  const [checkoutTarget, setCheckoutTarget] = useState<BookingWithDetails | null>(null);
 
   const today = '2026-10-14';
 
@@ -23,13 +26,16 @@ export default function BookingsTable({ bookings, onCheckOut }: BookingsTablePro
     return true;
   });
 
-  const handleCheckoutClick = async (bookingId: number) => {
-    if (!confirm(`Are you sure you want to process check-out for booking #${bookingId}? The room will automatically be released to Available.`)) {
-      return;
-    }
-    setCheckingOutId(bookingId);
+  const handleCheckoutClick = (booking: BookingWithDetails) => {
+    setCheckoutTarget(booking);
+  };
+
+  const handleConfirmCheckout = async () => {
+    if (!checkoutTarget) return;
+    setCheckingOutId(checkoutTarget.booking_id);
     try {
-      await onCheckOut(bookingId);
+      await onCheckOut(checkoutTarget.booking_id);
+      setCheckoutTarget(null);
     } finally {
       setCheckingOutId(null);
     }
@@ -189,7 +195,7 @@ export default function BookingsTable({ bookings, onCheckOut }: BookingsTablePro
                       <td className="py-4 px-5 text-right">
                         {isCheckedIn ? (
                           <button
-                            onClick={() => handleCheckoutClick(b.booking_id)}
+                            onClick={() => handleCheckoutClick(b)}
                             disabled={checkingOutId === b.booking_id}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                               isPendingCheckOut
@@ -214,6 +220,65 @@ export default function BookingsTable({ bookings, onCheckOut }: BookingsTablePro
           </table>
         </div>
       </div>
+
+      {/* Luxury Check-Out Confirmation Modal */}
+      {checkoutTarget && (
+        <ConfirmModal
+          isOpen={Boolean(checkoutTarget)}
+          onClose={() => setCheckoutTarget(null)}
+          onConfirm={handleConfirmCheckout}
+          isLoading={checkingOutId === checkoutTarget.booking_id}
+          title="Confirm Guest Check-Out"
+          variant="burgundy"
+          confirmLabel="Process Check-Out"
+          cancelLabel="Keep Checked-In"
+          icon={<LogOut className="w-5 h-5 text-[#741B2D]" />}
+          description={
+            <p>
+              Are you sure you want to process check-out for booking{' '}
+              <strong className="text-slate-900 font-bold font-mono">
+                #{checkoutTarget.booking_id}
+              </strong>
+              ? The room will automatically be released back to{' '}
+              <strong className="text-emerald-700">Available</strong> in room inventory and synced with Cloudflare D1.
+            </p>
+          }
+          detailsCard={
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Guest</span>
+                <span className="font-semibold text-slate-900">
+                  {checkoutTarget.guest.first_name} {checkoutTarget.guest.last_name}
+                </span>
+                <span className="text-[10px] text-slate-500 block truncate">
+                  {checkoutTarget.guest.email_address}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Accommodation</span>
+                <span className="font-semibold text-slate-900">
+                  Room {checkoutTarget.room.room_number}
+                </span>
+                <span className="text-[10px] text-[#741B2D] font-bold block">
+                  {checkoutTarget.room_type.room_type}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Stay Duration</span>
+                <span className="text-slate-800">
+                  {checkoutTarget.check_in_date} → {checkoutTarget.check_out_date}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Amount</span>
+                <span className="font-bold text-[#741B2D]">
+                  ₱{checkoutTarget.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 }
