@@ -8,9 +8,10 @@ const cookieParser = require('cookie-parser');
 const server = express();
 server.use(cookieParser());
 
-let appPromise: Promise<any> | null = null;
+let isInitialized = false;
+let initPromise: Promise<any> | null = null;
 
-async function bootstrap() {
+async function bootstrap(): Promise<any> {
   const logger = new Logger('BurgundySuiteBackend');
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
@@ -18,7 +19,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin: string, callback: Function) => {
-      // In Vercel services mode, requests share the top-level domain; also permit localhost & vercel previews
+      // Allow all origins in production and development
       callback(null, true);
     },
     credentials: true,
@@ -35,53 +36,39 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 4000;
-  try {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    await app.init();
+    logger.log('Burgundy Suite & Resort NestJS API initialized for Vercel serverless');
+  } else {
+    const port = process.env.PORT ?? 4000;
     await app.listen(port, '0.0.0.0');
     logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
-  } catch (listenErr) {
-    logger.warn(`app.listen bypassed or running in serverless wrapper: ${(listenErr as Error).message}`);
-    await app.init();
   }
 
-  return app;
+  isInitialized = true;
+  return server;
 }
 
-// Bootstrap application immediately so Vercel Fluid compute or local dev server is active
-appPromise = bootstrap().catch((err) => {
-  console.error('Failed to bootstrap NestJS application:', err);
-});
+// If running locally as standalone server, start immediately
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  bootstrap();
+}
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
-  try {
-    await appPromise;
-
-    // Handle path normalization for rewrites whether /api prefix was preserved or stripped
-    if (req.url && !req.url.startsWith('/api')) {
-      req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+  if (!isInitialized) {
+    if (!initPromise) {
+      initPromise = bootstrap();
     }
-
-    if (res.writableEnded) return;
-
-    return await new Promise<void>((resolve, reject) => {
-      res.on('finish', () => resolve());
-      res.on('close', () => resolve());
-      res.on('error', (err: any) => reject(err));
-
-      server(req, res, (err: any) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  } catch (handlerErr) {
-    console.error('Vercel serverless handler uncaught error:', handlerErr);
-    if (!res.headersSent) {
-      res.statusCode = 500;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ success: false, error: (handlerErr as Error).message || 'Server error' }));
-    }
+    await initPromise;
   }
+
+  // Handle path normalization for rewrites whether /api prefix was preserved or stripped
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+  }
+
+  return server(req, res);
 }
 
 // Support CommonJS module.exports for Vercel legacy serverless runners
@@ -90,9 +77,6 @@ if (typeof module !== 'undefined' && module.exports) {
   (module.exports as any).default = handler;
 }
 
-process.on('unhandledRejection', (reason) => {
-  console.warn('Unhandled Rejection caught in backend process:', reason);
-});
 
 
 
