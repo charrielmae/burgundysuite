@@ -7,7 +7,8 @@ const cookieParser = require('cookie-parser');
 
 const server = express();
 server.use(cookieParser());
-let isInitialized = false;
+
+let appPromise: Promise<any> | null = null;
 
 async function bootstrap() {
   const logger = new Logger('BurgundySuiteBackend');
@@ -33,28 +34,34 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
-  await app.init();
-  isInitialized = true;
 
-  // If running locally as a standalone server
-  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    const port = process.env.PORT ?? 4000;
+  const port = process.env.PORT ?? 4000;
+  try {
     await app.listen(port, '0.0.0.0');
     logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
+  } catch (listenErr) {
+    logger.warn(`app.listen bypassed or running in serverless wrapper: ${(listenErr as Error).message}`);
+    await app.init();
   }
+
   return app;
 }
 
-// For local standalone execution
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-  bootstrap();
-}
+// Bootstrap application immediately so Vercel Fluid compute or local dev server is active
+appPromise = bootstrap().catch((err) => {
+  console.error('Failed to bootstrap NestJS application:', err);
+});
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
-  if (!isInitialized) {
-    await bootstrap();
-  }
+  await appPromise;
   return server(req, res);
 }
+
+// Support CommonJS module.exports for Vercel legacy serverless runners
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = handler;
+  (module.exports as any).default = handler;
+}
+
 
