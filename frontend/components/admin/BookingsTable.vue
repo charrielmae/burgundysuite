@@ -66,107 +66,118 @@
 
     <!-- Bookings Table Container -->
     <div class="rounded-2xl bg-[#381018]/90 border border-[#5A1C2A] shadow-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
+      <div class="overflow-x-auto min-h-[528px]">
+        <table class="w-full text-left text-xs table-fixed min-w-[960px]">
           <thead>
-            <tr class="bg-[#240A10] border-b border-[#5A1C2A] text-white/60 uppercase tracking-wider text-[10px]">
-              <th class="py-3.5 px-4 font-bold">Booking ID</th>
-              <th class="py-3.5 px-4 font-bold">Guest Details</th>
-              <th class="py-3.5 px-4 font-bold">Suite & Room</th>
-              <th class="py-3.5 px-4 font-bold">Stay Schedule</th>
-              <th class="py-3.5 px-4 font-bold">Payment</th>
-              <th class="py-3.5 px-4 font-bold">Status</th>
-              <th class="py-3.5 px-4 font-bold text-right">Actions</th>
+            <tr class="bg-[#240A10] border-b border-[#5A1C2A] text-white/60 uppercase tracking-wider text-[10px] h-[48px]">
+              <th class="px-4 font-bold w-[13%]">Booking ID</th>
+              <th class="px-4 font-bold w-[22%]">Guest Details</th>
+              <th class="px-4 font-bold w-[21%]">Suite & Room</th>
+              <th class="px-4 font-bold w-[18%]">Stay Schedule</th>
+              <th class="px-4 font-bold w-[12%]">Payment</th>
+              <th class="px-4 font-bold w-[12%]">Status</th>
+              <th class="px-4 font-bold w-[12%] text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#5A1C2A]/60 text-white/90">
             <tr v-if="filteredBookings.length === 0">
-              <td colspan="7" class="py-12 text-center text-white/40 text-xs">
+              <td colspan="7" class="py-12 text-center text-white/40 text-xs h-[480px]">
                 No reservation records found for this view filter.
               </td>
             </tr>
-            <tr
-              v-else
-              v-for="b in paginatedBookings"
-              :key="b.booking_id"
-              class="hover:bg-[#4A1521]/40 transition-colors"
-            >
-              <!-- Booking ID -->
-              <td class="py-3.5 px-4 font-mono font-bold text-[#E5C378]">
-                #BSR-{{ b.booking_id }}
-              </td>
+            <template v-else>
+              <tr
+                v-for="b in paginatedBookings"
+                :key="b.booking_id"
+                class="hover:bg-[#4A1521]/40 transition-colors h-[60px]"
+              >
+                <!-- Booking ID -->
+                <td class="px-4 font-mono font-bold text-[#E5C378] truncate">
+                  #BSR-{{ b.booking_id }}
+                </td>
 
-              <!-- Guest Details -->
-              <td class="py-3.5 px-4">
-                <div class="font-bold text-white">
-                  {{ b.guest?.first_name }} {{ b.guest?.last_name }}
-                </div>
-                <div class="text-[11px] text-white/60 mt-0.5">
-                  {{ b.guest?.email_address }}
-                </div>
-              </td>
+                <!-- Guest Details -->
+                <td class="px-4">
+                  <div class="font-bold text-white truncate">
+                    {{ b.guest?.first_name }} {{ b.guest?.last_name }}
+                  </div>
+                  <div class="text-[11px] text-white/60 mt-0.5 truncate">
+                    {{ b.guest?.email_address }}
+                  </div>
+                </td>
 
-              <!-- Suite & Room -->
-              <td class="py-3.5 px-4">
-                <div class="font-semibold text-white">
-                  {{ b.room_type?.room_type || 'Luxury Suite' }}
-                </div>
-                <div class="text-[11px] text-[#E5C378] font-mono mt-0.5">
-                  Room #{{ b.room?.room_number }} (Floor {{ b.room?.floor_number }})
-                </div>
-              </td>
+                <!-- Suite & Room -->
+                <td class="px-4">
+                  <div class="font-semibold text-white truncate">
+                    {{ b.room_type?.room_type || 'Luxury Suite' }}
+                  </div>
+                  <div class="text-[11px] text-[#E5C378] font-mono mt-0.5 truncate">
+                    Room #{{ b.room?.room_number }} (Floor {{ b.room?.floor_number }})
+                  </div>
+                </td>
 
-              <!-- Stay Schedule -->
-              <td class="py-3.5 px-4">
-                <div class="text-white">{{ b.check_in_date }} → {{ b.check_out_date }}</div>
-                <div class="text-[11px] text-white/50 mt-0.5">
-                  {{ calculateNights(b.check_in_date, b.check_out_date) }} night(s)
-                </div>
-              </td>
+                <!-- Stay Schedule -->
+                <td class="px-4">
+                  <div class="text-white truncate">{{ b.check_in_date }} → {{ b.check_out_date }}</div>
+                  <div class="text-[11px] text-white/50 mt-0.5 truncate">
+                    {{ calculateNights(b.check_in_date, b.check_out_date) }} night(s)
+                  </div>
+                </td>
 
-              <!-- Payment -->
-              <td class="py-3.5 px-4">
-                <div class="font-bold text-[#E5C378]">
-                  ₱{{ Number(b.total_amount).toLocaleString() }}
-                </div>
-                <div class="text-[10px] text-emerald-400 mt-0.5 uppercase tracking-wide">
-                  {{ b.payment?.payment_method || 'Verified' }}
-                </div>
-              </td>
+                <!-- Payment -->
+                <td class="px-4">
+                  <div class="font-bold text-[#E5C378]">
+                    ₱{{ Number(b.total_amount).toLocaleString() }}
+                  </div>
+                  <div class="text-[10px] text-emerald-400 mt-0.5 uppercase tracking-wide truncate">
+                    {{ b.payment?.payment_method || 'Verified' }}
+                  </div>
+                </td>
 
-              <!-- Status Badge -->
-              <td class="py-3.5 px-4">
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                    b.booking_status === 'checked-in'
-                      ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
-                      : b.booking_status === 'completed'
-                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-zinc-800 text-zinc-300',
-                  ]"
-                >
+                <!-- Status Badge -->
+                <td class="px-4">
                   <span
-                    v-if="b.booking_status === 'checked-in'"
-                    class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"
-                  />
-                  <span>{{ b.booking_status }}</span>
-                </span>
-              </td>
+                    :class="[
+                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                      b.booking_status === 'checked-in'
+                        ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+                        : b.booking_status === 'completed'
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-zinc-800 text-zinc-300',
+                    ]"
+                  >
+                    <span
+                      v-if="b.booking_status === 'checked-in'"
+                      class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"
+                    />
+                    <span>{{ b.booking_status }}</span>
+                  </span>
+                </td>
 
-              <!-- Actions -->
-              <td class="py-3.5 px-4 text-right">
-                <button
-                  v-if="b.booking_status === 'checked-in'"
-                  type="button"
-                  @click="selectedCheckoutBooking = b"
-                  class="px-3 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                >
-                  Check Out
-                </button>
-                <span v-else class="text-white/40 text-xs font-mono">—</span>
-              </td>
-            </tr>
+                <!-- Actions -->
+                <td class="px-4 text-right">
+                  <button
+                    v-if="b.booking_status === 'checked-in'"
+                    type="button"
+                    @click="selectedCheckoutBooking = b"
+                    class="px-3 py-1.5 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    Check Out
+                  </button>
+                  <span v-else class="text-white/40 text-xs font-mono">—</span>
+                </td>
+              </tr>
+
+              <!-- Invisible filler rows so the table never shrinks or shifts height -->
+              <tr
+                v-for="i in emptySlots"
+                :key="`empty-${i}`"
+                class="h-[60px] pointer-events-none opacity-0 select-none"
+                aria-hidden="true"
+              >
+                <td colspan="7" class="px-4">&nbsp;</td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -289,6 +300,11 @@ watch(totalPages, (newTotal) => {
 const paginatedBookings = computed(() => {
   const start = (currentPage.value - 1) * PAGE_SIZE;
   return filteredBookings.value.slice(start, start + PAGE_SIZE);
+});
+
+const emptySlots = computed(() => {
+  if (filteredBookings.value.length === 0) return 0;
+  return Math.max(0, PAGE_SIZE - paginatedBookings.value.length);
 });
 
 const startItem = computed(() => {

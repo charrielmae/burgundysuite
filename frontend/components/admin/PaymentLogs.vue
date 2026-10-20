@@ -13,59 +13,70 @@
     </div>
 
     <div class="rounded-2xl bg-[#381018]/90 border border-[#5A1C2A] shadow-xl overflow-hidden">
-      <div class="overflow-x-auto no-scrollbar">
-        <table class="w-full text-left text-xs">
+      <div class="overflow-x-auto no-scrollbar min-h-[496px]">
+        <table class="w-full text-left text-xs table-fixed min-w-[900px]">
           <thead class="bg-[#240A10] border-b border-[#5A1C2A] text-[#E5C378] uppercase tracking-wider font-bold">
-            <tr>
-              <th class="py-4 px-5">Payment ID</th>
-              <th class="py-4 px-5">Booking Ref</th>
-              <th class="py-4 px-5">Payment Method</th>
-              <th class="py-4 px-5">Amount</th>
-              <th class="py-4 px-5">Status</th>
-              <th class="py-4 px-5">Timestamp</th>
+            <tr class="h-[48px]">
+              <th class="px-5 w-[16%]">Payment ID</th>
+              <th class="px-5 w-[16%]">Booking Ref</th>
+              <th class="px-5 w-[22%]">Payment Method</th>
+              <th class="px-5 w-[16%]">Amount</th>
+              <th class="px-5 w-[14%]">Status</th>
+              <th class="px-5 w-[16%]">Timestamp</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#5A1C2A]/60 text-white/90">
             <tr v-if="sortedPayments.length === 0">
-              <td colspan="6" class="py-8 text-center text-white/40 text-xs">
+              <td colspan="6" class="py-8 text-center text-white/40 text-xs h-[448px]">
                 No payment transactions recorded yet.
               </td>
             </tr>
-            <tr
-              v-else
-              v-for="p in paginatedPayments"
-              :key="p.payment_id"
-              class="hover:bg-[#4A1521]/40 transition-colors"
-            >
-              <td class="py-4 px-5 font-mono font-bold text-[#E5C378]">
-                #PAY-{{ p.payment_id }}
-              </td>
-              <td class="py-4 px-5 font-mono text-white/70">
-                #BSR-{{ p.booking_id }}
-              </td>
-              <td class="py-4 px-5 text-white/70">
-                {{ p.payment_method }}
-              </td>
-              <td class="py-4 px-5 font-bold text-white">
-                ₱{{ Number(p.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
-              </td>
-              <td class="py-4 px-5">
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-                    p.payment_status === 'paid'
-                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50'
-                      : 'bg-amber-950/80 text-amber-300 border border-amber-500/50',
-                  ]"
-                >
-                  <CheckCircle2 class="w-3 h-3" />
-                  <span>{{ p.payment_status }}</span>
-                </span>
-              </td>
-              <td class="py-4 px-5 text-white/50 font-mono text-[11px]">
-                {{ p.payment_date ? p.payment_date.replace('T', ' ').slice(0, 19) : 'N/A' }}
-              </td>
-            </tr>
+            <template v-else>
+              <tr
+                v-for="p in paginatedPayments"
+                :key="p.payment_id"
+                class="hover:bg-[#4A1521]/40 transition-colors h-[56px]"
+              >
+                <td class="px-5 font-mono font-bold text-[#E5C378] truncate">
+                  #PAY-{{ p.payment_id }}
+                </td>
+                <td class="px-5 font-mono text-white/70 truncate">
+                  #BSR-{{ p.booking_id }}
+                </td>
+                <td class="px-5 text-white/70 truncate">
+                  {{ p.payment_method }}
+                </td>
+                <td class="px-5 font-bold text-white truncate">
+                  ₱{{ Number(p.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                </td>
+                <td class="px-5">
+                  <span
+                    :class="[
+                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                      p.payment_status === 'paid'
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50'
+                        : 'bg-amber-950/80 text-amber-300 border border-amber-500/50',
+                    ]"
+                  >
+                    <CheckCircle2 class="w-3 h-3" />
+                    <span>{{ p.payment_status }}</span>
+                  </span>
+                </td>
+                <td class="px-5 text-white/50 font-mono text-[11px] truncate">
+                  {{ p.payment_date ? p.payment_date.replace('T', ' ').slice(0, 19) : 'N/A' }}
+                </td>
+              </tr>
+
+              <!-- Invisible filler rows so the table never shrinks or shifts height -->
+              <tr
+                v-for="i in emptySlots"
+                :key="`empty-pay-${i}`"
+                class="h-[56px] pointer-events-none opacity-0 select-none"
+                aria-hidden="true"
+              >
+                <td colspan="6" class="px-5">&nbsp;</td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -155,6 +166,11 @@ watch(totalPages, (newTotal) => {
 const paginatedPayments = computed(() => {
   const start = (currentPage.value - 1) * PAGE_SIZE;
   return sortedPayments.value.slice(start, start + PAGE_SIZE);
+});
+
+const emptySlots = computed(() => {
+  if (sortedPayments.value.length === 0) return 0;
+  return Math.max(0, PAGE_SIZE - paginatedPayments.value.length);
 });
 
 const startItem = computed(() => {
