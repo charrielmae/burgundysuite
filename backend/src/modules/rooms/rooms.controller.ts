@@ -4,6 +4,7 @@ import {
   Patch,
   Post,
   Body,
+  Query,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
@@ -13,6 +14,28 @@ import { NewRoomTypeRequest, RoomStatus } from '../../types/database';
 @Controller()
 export class RoomsController {
   constructor(private readonly dbService: DatabaseService) {}
+
+  @Get('rooms/availability')
+  checkAvailability(
+    @Query('checkIn') checkIn?: string,
+    @Query('checkOut') checkOut?: string,
+    @Query('roomTypeId') roomTypeId?: string
+  ) {
+    try {
+      const today = new Date();
+      const defaultIn = checkIn || new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+      const defaultOut = checkOut || new Date(today.getTime() + 4 * 86400000).toISOString().split('T')[0];
+      const parsedTypeId = roomTypeId && roomTypeId !== 'all' ? Number(roomTypeId) : undefined;
+
+      const data = this.dbService.checkRoomAvailability(defaultIn, defaultOut, parsedTypeId);
+      return { success: true, data };
+    } catch (error) {
+      throw new HttpException(
+        { success: false, error: (error as Error).message },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
   @Get('rooms')
   getRooms() {

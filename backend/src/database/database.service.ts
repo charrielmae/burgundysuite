@@ -21,6 +21,8 @@ import {
   StaffAccountWithUser,
   UpdateAccountRequest,
   AuthenticatedAdmin,
+  RoomAvailabilityResult,
+  RoomAvailabilityResponse,
 } from '../types/database';
 
 interface DatabaseData {
@@ -469,6 +471,76 @@ export class DatabaseService {
   public getRoomTypes(): RoomTypeDetails[] {
     const db = this.readDb();
     return db.ROOM_TYPE_DETAILS;
+  }
+
+  public checkRoomAvailability(
+    checkInDate: string,
+    checkOutDate: string,
+    roomTypeId?: number
+  ): RoomAvailabilityResponse {
+    const db = this.readDb();
+    const inDate = new Date(checkInDate);
+    const outDate = new Date(checkOutDate);
+    const diffTime = Math.max(0, outDate.getTime() - inDate.getTime());
+    const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    let targetTypes = db.ROOM_TYPE_DETAILS;
+    if (roomTypeId && !isNaN(roomTypeId)) {
+      const filtered = targetTypes.filter((t) => t.room_type_id === roomTypeId);
+      if (filtered.length > 0) {
+        targetTypes = filtered;
+      }
+    }
+
+    const results: RoomAvailabilityResult[] = targetTypes.map((type) => {
+      const roomsOfType = db.ROOM_DETAILS.filter((r) => r.room_type_id === type.room_type_id);
+
+      const availableRoomsList = roomsOfType.filter((room) => {
+        if (room.room_status === 'maintenance') return false;
+
+        // Check if there are overlapping active bookings for this room
+        const hasOverlap = db.ROOM_BOOKING.some((b) => {
+          if (b.room_id !== room.room_id) return false;
+          if (b.booking_status === 'cancelled') return false;
+
+          const bIn = new Date(b.check_in_date).getTime();
+          const bOut = new Date(b.check_out_date).getTime();
+          const targetIn = inDate.getTime();
+          const targetOut = outDate.getTime();
+
+          return bIn < targetOut && bOut > targetIn;
+        });
+
+        return !hasOverlap;
+      });
+
+      const availableCount = availableRoomsList.length;
+      const meta = ROOM_METADATA[type.room_type_id];
+
+      return {
+        room_type_id: type.room_type_id,
+        room_type: type.room_type,
+        room_capacity: type.room_capacity,
+        rate_per_night: type.rate_per_night,
+        description: type.description || meta?.description || 'Spacious coastal retreat with bespoke luxury appointments.',
+        image_url: type.image_url || meta?.image_url || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+        badge: type.badge || meta?.badge || 'Luxury',
+        features: type.features && type.features.length > 0 ? type.features : (meta?.features || ['Ocean View', 'Air Conditioning', 'King Bed']),
+        total_rooms: roomsOfType.length,
+        available_rooms: availableCount,
+        is_available: availableCount > 0,
+        available_room_numbers: availableRoomsList.map((r) => r.room_number),
+        nights,
+        total_estimated_rate: nights * type.rate_per_night,
+      };
+    });
+
+    return {
+      check_in_date: checkInDate,
+      check_out_date: checkOutDate,
+      nights,
+      results,
+    };
   }
 
   public async createRoomType(

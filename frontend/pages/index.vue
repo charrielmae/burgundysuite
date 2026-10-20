@@ -21,6 +21,17 @@
 
     <Footer />
 
+    <!-- Room Availability Modal (Check room availability without reserving) -->
+    <AvailabilityModal
+      :is-open="isAvailabilityModalOpen"
+      :room-types="roomTypes"
+      :initial-room-type-id="selectedSuiteTypeId"
+      :initial-check-in="heroCheckIn"
+      :initial-check-out="heroCheckOut"
+      @close="isAvailabilityModalOpen = false"
+      @book-suite="handleProceedToBook"
+    />
+
     <!-- Reservation Modal -->
     <ReservationModal
       :is-open="isReservationModalOpen"
@@ -130,6 +141,7 @@ const DEFAULT_SUITES = [
 const { request } = useApi();
 
 const roomTypes = ref<any[]>(DEFAULT_SUITES);
+const isAvailabilityModalOpen = ref(false);
 const isReservationModalOpen = ref(false);
 const isMyBookingsModalOpen = ref(false);
 const selectedSuiteTypeId = ref<number>(1);
@@ -164,6 +176,15 @@ const handleHeroSearch = (checkIn: string, checkOut: string, roomTypeId?: number
   if (roomTypeId) {
     selectedSuiteTypeId.value = roomTypeId;
   }
+  // Check room availability without initiating a booking reservation
+  isAvailabilityModalOpen.value = true;
+};
+
+const handleProceedToBook = (suiteTypeId: number, checkIn: string, checkOut: string) => {
+  selectedSuiteTypeId.value = suiteTypeId;
+  heroCheckIn.value = checkIn;
+  heroCheckOut.value = checkOut;
+  isAvailabilityModalOpen.value = false;
   isReservationModalOpen.value = true;
 };
 

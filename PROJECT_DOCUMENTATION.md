@@ -372,7 +372,19 @@ In all guest and administrative interfaces, bookings are sorted **descending by 
 - **Admin Controller**: In `getPayments()`, transaction records sort descending by `payment_id`.
 - **Frontend Tables**: [BookingsTable.vue](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/frontend/components/admin/BookingsTable.vue), [PaymentLogs.vue](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/frontend/components/admin/PaymentLogs.vue), and [VerifyBookingModal.vue](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/frontend/components/VerifyBookingModal.vue) guarantee that the most recent reservation always sits at row #1.
 
-### 2. Physical Room Allocation & Availability
+### 2. Physical Room Allocation & Availability Checking
+
+#### A. Dedicated Availability Check (Non-Reserving)
+- When guests click **"Check Availability"** on the hero search bar, the platform queries `GET /api/rooms/availability?checkIn=&checkOut=&roomTypeId=`.
+- The system evaluates physical room assignments against active bookings (`check_in_date < targetOut && check_out_date > targetIn`) and maintenance locks.
+- Displays an interactive **Availability Modal** (`AvailabilityModal.vue`) showing:
+  - Total available vs. occupied suites for the selected dates.
+  - Nightly rate and calculated stay total (number of nights).
+  - Room status badges: 🟢 **Available (X Suites Ready)** vs. 🔴 **Occupied for Selected Dates**.
+  - **No reservation is created or personal guest details requested** during an availability check.
+  - If a guest decides to proceed, clicking **"Book This Suite"** transfers their selected suite and dates to the reservation workflow.
+
+#### B. Reservation Booking & Allocation
 When a guest initiates a reservation:
 1. The system locates an available room of the requested suite category (`room_status === 'available'`).
 2. If all rooms of that type are occupied, the booking engine allocates the primary suite room while updating its occupancy.
@@ -401,8 +413,9 @@ Base Path: `/api`
 | `GET` | `/api/auth/me` | Return active session user | None (reads cookie / CF Access) | `{ success: true, user: { ... } }` |
 
 ### Rooms & Inventory (`/api/rooms`, `/api/room-types`)
-| Method | Endpoint | Description | Request Body | Response |
+| Method | Endpoint | Description | Request Body / Query | Response |
 | :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/rooms/availability` | Real-time check of room availability across date ranges without reserving | Query: `?checkIn=&checkOut=&roomTypeId=` | `{ success: true, data: RoomAvailabilityResponse }` |
 | `GET` | `/api/rooms` | Retrieve all physical rooms with joined category data | None | `{ success: true, data: RoomWithDetails[] }` |
 | `PATCH`| `/api/rooms` | Update physical room status | `{ room_id: number, status: 'available' \| 'occupied' \| 'maintenance' }` | `{ success: true, data: RoomWithDetails }` |
 | `GET` | `/api/room-types` | Retrieve all suite categories | None | `{ success: true, data: RoomTypeDetails[] }` |

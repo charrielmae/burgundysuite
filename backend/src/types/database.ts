@@ -184,3 +184,28 @@ export interface AuthenticatedAdmin {
   position: string;
   contact_number: string;
 }
+
+export interface RoomAvailabilityResult {
+  room_type_id: number;
+  room_type: string;
+  room_capacity: number;
+  rate_per_night: number;
+  description?: string;
+  image_url?: string;
+  badge?: string;
+  features?: string[];
+  total_rooms: number;
+  available_rooms: number;
+  is_available: boolean;
+  available_room_numbers: number[];
+  nights: number;
+  total_estimated_rate: number;
+}
+
+export interface RoomAvailabilityResponse {
+  check_in_date: string;
+  check_out_date: string;
+  nights: number;
+  results: RoomAvailabilityResult[];
+}
+
