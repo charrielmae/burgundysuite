@@ -37,31 +37,23 @@ async function bootstrap(): Promise<any> {
 
   app.setGlobalPrefix('api');
 
-  await app.init();
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
+
   isInitialized = true;
-
-  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    const port = process.env.PORT ?? 4000;
-    app.listen(port, '0.0.0.0').then(() => {
-      logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
-    });
-  }
-
   return server;
 }
 
-// Standalone execution for local development
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-  bootstrap();
-}
+// Start application listening on port in all deployment environments
+initPromise = bootstrap().catch((err) => {
+  console.error('Fatal backend bootstrap error:', err);
+});
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
   try {
-    if (!isInitialized) {
-      if (!initPromise) {
-        initPromise = bootstrap();
-      }
+    if (!isInitialized && initPromise) {
       await initPromise;
     }
 
