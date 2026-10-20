@@ -6,7 +6,10 @@
 
 **Burgundy Suite & Resort** is an end-to-end luxury hospitality web application and property management system (PMS). It delivers an opulent, responsive guest experience for browsing and reserving high-end suites, paired with a command center for hotel administrators and general managers to monitor real-time occupancy, revenue KPIs, bookings, physical room inventory, and internal staff credentials.
 
-The system is engineered for dual deployment: running locally as a full-stack Next.js 16 application backed by a persistent file store, and natively on Cloudflare’s Edge Infrastructure leveraging **Cloudflare D1 (Serverless SQLite)** and **Cloudflare R2 (Object Storage)**.
+The system is engineered as a decoupled modern **Monorepo**:
+1. **Frontend**: **Nuxt 3 (Vue 3 Single File Components)** powered by Vite, Tailwind CSS, Lucide icons, and Vue Composables (`localhost:3000`).
+2. **Backend**: **Nest.js** enterprise REST API (`localhost:4000/api`) structured with modular TypeScript architecture, dependency injection, controllers, guards, and services.
+3. **Database & Storage**: Dual-mode storage featuring live edge **Cloudflare D1 (Serverless SQLite)** via REST API, **Cloudflare R2 (Object Storage)** via S3 protocol, and a zero-config local JSON persistence store fallback (`data/burgundy_store.json`).
 
 ---
 
@@ -14,51 +17,129 @@ The system is engineered for dual deployment: running locally as a full-stack Ne
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
-| **Framework** | **Next.js 16 (App Router)** | Modern React framework utilizing Turbopack, Server Components, and API Route Handlers. |
-| **Language** | **TypeScript** | Strict type definitions across frontend components, API payloads, and database models. |
-| **Styling** | **Tailwind CSS & CSS Modules** | Custom luxury palette: Deep Burgundy (`#2B0E14`), Rich Wine (`#381018`), Warm Gold (`#E5C378`), and Cream Ivory (`#F5EFEB`). |
-| **Database** | **Cloudflare D1 / SQLite** | Relational SQL database strictly modeled according to a 7-table ERD specification. |
-| **Object Storage** | **Cloudflare R2 (AWS S3-compatible)** | Zero-egress bucket storage for suite photography and executive account backups. |
-| **Authentication** | **Auth.js (NextAuth) + Custom HMAC Cookies** | Hybrid security utilizing HTTP-only signed session cookies with optional Cloudflare Zero Trust / Turnstile support. |
-| **Icons & UI** | **Lucide React** | Featherweight SVG icons for hotel amenity badges, management KPIs, and navigation. |
+| **Frontend Framework** | **Nuxt 3 (Vue 3)** | High-performance Vue framework with Vite, reactive state composables (`useAuth`, `useApi`), and SSR/SPA capabilities. |
+| **Backend Framework** | **Nest.js 10** | Enterprise Node.js framework with modular architecture (`AuthModule`, `RoomsModule`, `BookingsModule`, `AdminModule`, `CloudflareModule`, `MediaModule`). |
+| **Language** | **TypeScript 5** | Strict type definitions across frontend Vue components, Nest DTOs, controllers, and database models. |
+| **Styling** | **Tailwind CSS v4 & Custom Tokens** | Curated luxury palette: Deep Burgundy (`#2B0E14`), Rich Wine (`#381018`), Warm Gold (`#E5C378`), and Cream Ivory (`#F5EFEB`). |
+| **Database** | **Cloudflare D1 / SQLite** | Relational SQL database strictly modeled according to a 7-table ERD specification with live REST execution & batching. |
+| **Object Storage** | **Cloudflare R2 (S3-compatible)** | Zero-egress bucket storage for suite photography and account backups via `@aws-sdk/client-s3`. |
+| **Authentication** | **HMAC Signed HTTP-Only Cookies** | Session security utilizing cryptographic HMAC tokens stored in HTTP-only cookies with Cloudflare Zero Trust / Turnstile support. |
+| **Icons & UI** | **Lucide Vue Next** | Lightweight SVG icons for hotel amenity badges, management KPIs, and navigation. |
 
 ---
 
-## 3. High-Level System Architecture
+## 3. High-Level Monorepo Architecture
 
 ```mermaid
 graph TD
-    subgraph Client ["Client Layer"]
-        Guest["Guest Portal (/)<br/>• Suite Showcase<br/>• Reservation Modal<br/>• Verify Booking"]
-        Admin["Admin Portal (/admin)<br/>• Real-time Occupancy & KPIs<br/>• Room Status Switcher<br/>• Staff Directory & Provisioning"]
+    subgraph Client ["Frontend Layer (Nuxt 3 — Port 3000)"]
+        Guest["Guest Luxury Portal (/)<br/>• Suite Showcase<br/>• Reservation Modal<br/>• Verify Stay Modal"]
+        Admin["Admin Command Center (/admin)<br/>• Real-time Occupancy & KPIs<br/>• Floor Inventory Switcher<br/>• Staff Directory & Provisioning"]
+        NuxtProxy["Nitro Dev Proxy (/api/**)"]
     end
 
-    subgraph AppServer ["Next.js 16 Application Server (App Router)"]
-        Pages["React Server & Client Components"]
-        API["Route Handlers (/api/*)<br/>• /api/rooms<br/>• /api/bookings<br/>• /api/admin/*<br/>• /api/auth/*<br/>• /api/cloudflare/*"]
-        AuthModule["Auth Service<br/>(HMAC Session Cookies & NextAuth D1 Adapter)"]
+    subgraph Server ["Backend API Layer (Nest.js — Port 4000)"]
+        NestApp["NestJS Application Gateway (/api)"]
+        AuthMod["AuthModule (/api/auth)"]
+        RoomsMod["RoomsModule (/api/rooms, /api/room-types)"]
+        BookingsMod["BookingsModule (/api/bookings)"]
+        AdminMod["AdminModule (/api/admin)"]
+        CloudflareMod["CloudflareModule (/api/cloudflare)"]
+        MediaMod["MediaModule (/api/upload, /api/media)"]
+        DbService["DatabaseService & Local Fallback Store"]
     end
 
     subgraph Storage ["Data & Storage Layer"]
-        D1[("Cloudflare D1<br/>(Serverless SQLite Edge Database)")]
-        R2[("Cloudflare R2 Bucket<br/>(Suite Images & Account Backups)")]
-        LocalStore[("Local Fallback<br/>(data/burgundy_store.json)")]
+        D1[("Cloudflare D1 Database<br/>(Serverless SQLite Edge Network)")]
+        R2[("Cloudflare R2 Bucket<br/>(Suite Images & Media Storage)")]
+        LocalStore[("Local Fallback Store<br/>(data/burgundy_store.json)")]
     end
 
-    Guest -->|Browse & Reserve| Pages
-    Admin -->|Manage Hotel| Pages
-    Pages --> API
-    API --> AuthModule
-    API --> D1
-    API --> R2
-    API --> LocalStore
+    Guest --> NuxtProxy
+    Admin --> NuxtProxy
+    NuxtProxy -->|HTTP / JSON| NestApp
+    NestApp --> AuthMod
+    NestApp --> RoomsMod
+    NestApp --> BookingsMod
+    NestApp --> AdminMod
+    NestApp --> CloudflareMod
+    NestApp --> MediaMod
+    NestApp --> DbService
+    DbService -->|REST API| D1
+    DbService -->|JSON I/O| LocalStore
+    MediaMod -->|S3 Protocol| R2
 ```
 
 ---
 
-## 4. Database Schema (7-Table ERD Design)
+## 4. Repository Structure
 
-The database schema strictly adheres to relational normalization standards and is declared in [migrations/0001_initial_schema.sql](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/migrations/0001_initial_schema.sql) and [src/types/database.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/types/database.ts):
+```
+burgundysuite/
+├── backend/                       # Nest.js Backend Service (Port 4000)
+│   ├── src/
+│   │   ├── database/
+│   │   │   ├── database.module.ts
+│   │   │   └── database.service.ts # 7-table DBMS logic, D1 queries & local store
+│   │   ├── modules/
+│   │   │   ├── auth/              # HMAC sessions, login, logout, me, Turnstile
+│   │   │   ├── rooms/             # Rooms and room-types controllers
+│   │   │   ├── bookings/          # Reservations, guest records, checkouts
+│   │   │   ├── admin/             # KPIs, staff CRUD, payments, reset
+│   │   │   ├── cloudflare/        # D1 query execution, telemetry & sync
+│   │   │   └── media/             # Cloudflare R2 upload & media stream proxy
+│   │   ├── types/
+│   │   │   └── database.ts        # Shared ERD types and interfaces
+│   │   ├── app.module.ts          # Root Nest module
+│   │   └── main.ts                # Bootstrap, CORS, CookieParser, global prefix
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/                      # Nuxt 3 Frontend Application (Port 3000)
+│   ├── assets/
+│   │   └── css/main.css           # Luxury burgundy theme tokens & styles
+│   ├── components/
+│   │   ├── Navbar.vue             # Header with smooth navigation & guest verification trigger
+│   │   ├── Hero.vue               # Visual banner with availability datepicker
+│   │   ├── HavenOverview.vue      # Storytelling & bento masonry showcase
+│   │   ├── SuitesSection.vue      # 8 luxury suites with pagination & reservation trigger
+│   │   ├── ReservationModal.vue   # Multi-step booking modal with instant calculations
+│   │   ├── VerifyBookingModal.vue # Passwordless guest email stay lookup
+│   │   ├── AmenitiesSection.vue   # World-class amenities cards & perks
+│   │   ├── Footer.vue             # Opulent footer with concierge details
+│   │   └── admin/
+│   │       ├── AdminLoginGate.vue # Credentials gate for management staff
+│   │       ├── AdminHeader.vue    # Toolbar with quick actions & user session
+│   │       ├── AdminHeroBanner.vue# Executive hero banner with scroll cue
+│   │       ├── AdminKPIs.vue      # Revenue, Occupancy %, and Checkout counters
+│   │       ├── AdminChart.vue     # Dynamic 7-day revenue performance chart
+│   │       ├── RoomInventoryGrid.vue # Floor cards with live status switcher
+│   │       ├── BookingsTable.vue  # Filterable booking ledger & 1-click checkout
+│   │       ├── PaymentLogs.vue    # Financial audit trail
+│   │       ├── StaffAccountsModal.vue # Staff directory & account provisioning
+│   │       ├── AddSuiteModal.vue  # R2 drag-and-drop upload & suite creator
+│   │       ├── CloudflareD1Modal.vue  # Live D1 connectivity & 1-click sync
+│   │       └── ConfirmModal.vue   # Accessible confirmation dialog
+│   ├── composables/
+│   │   ├── useApi.ts              # Authenticated fetch client with cookies
+│   │   └── useAuth.ts             # Reactive admin session management
+│   ├── pages/
+│   │   ├── index.vue              # Guest Luxury Portal
+│   │   └── admin/index.vue        # Executive Management Command Center
+│   ├── app.vue                    # Root Nuxt layout
+│   ├── nuxt.config.ts             # Tailwind v4, nitro proxy to Nest backend
+│   └── package.json
+├── migrations/                    # Database DDL & Seed
+│   ├── 0001_initial_schema.sql
+│   └── seed.sql
+├── data/
+│   └── burgundy_store.json        # Zero-config local persistence fallback
+├── package.json                   # Root monorepo workspace orchestration
+└── wrangler.json                  # Cloudflare D1 database configuration
+```
+
+---
+
+## 5. Database Schema (7-Table ERD Design)
 
 ```mermaid
 erDiagram
@@ -104,6 +185,10 @@ erDiagram
         varchar room_type
         int room_capacity
         decimal rate_per_night
+        text image_url
+        text description
+        text features
+        text badge
     }
 
     ROOM_DETAILS {
@@ -122,7 +207,7 @@ erDiagram
         date check_in_date
         date check_out_date
         decimal total_amount
-        varchar booking_status "pending | checked-in | completed | cancelled"
+        varchar booking_status "checked-in | completed | cancelled"
     }
 
     PAYMENT_DETAILS {
@@ -130,139 +215,76 @@ erDiagram
         int booking_id FK,UK
         varchar payment_method
         decimal amount
-        varchar payment_status "unpaid | paid | refunded"
+        varchar payment_status "paid | unpaid | refunded"
         datetime payment_date
     }
 ```
 
-### Realistic Room Inventory Mapping
-The resort features **8 Curated Suite Types** mapped 1-to-1 to physical rooms across 5 floors:
-- **Floor 1**: Room 101 (Deluxe Suite, Occupied), Room 102 (Executive King, Available)
-- **Floor 2**: Room 201 (Presidential Suite, Occupied), Room 202 (Oceanview Sunset Villa, Maintenance)
-- **Floor 3**: Room 301 (Family Suite, Available), Room 302 (Sapphire Ocean Villa, Available)
-- **Floor 4**: Room 401 (Penthouse Haven, Occupied)
-- **Floor 5**: Room 501 (Royal Emerald Penthouse, Available)
+---
+
+## 6. Nest.js Backend API Endpoints
+
+All endpoints are hosted under `http://localhost:4000/api` (and proxied automatically from Nuxt at `/api/*`):
+
+| Controller | Method | Path | Description |
+| :--- | :--- | :--- | :--- |
+| **AuthController** | `POST` | `/api/auth/login` | Authenticates admin/staff against D1/store; sets HTTP-only session cookie. |
+| **AuthController** | `POST` | `/api/auth/logout` | Clears management session cookie. |
+| **AuthController** | `GET` | `/api/auth/me` | Validates active session token or Cloudflare Zero Trust headers. |
+| **RoomsController** | `GET` | `/api/rooms` | Returns physical rooms with joined category data and statuses. |
+| **RoomsController** | `PATCH` | `/api/rooms` | Updates room status (`available`, `occupied`, `maintenance`). |
+| **RoomsController** | `GET` | `/api/room-types` | Returns all curated suite tiers. |
+| **RoomsController** | `POST` | `/api/room-types` | Creates a new suite category and registers a physical room. |
+| **BookingsController** | `GET` | `/api/bookings` | Returns booking roster (supports `?filter=` and `?email=`). |
+| **BookingsController** | `POST` | `/api/bookings` | Creates a reservation, guest record, and payment transaction. |
+| **BookingsController** | `POST` | `/api/bookings/:id/checkout` | Completes guest stay and resets room status to available. |
+| **AdminController** | `GET` | `/api/admin/metrics` | Calculates revenue aggregates, occupancy %, and 7-day trend chart. |
+| **AdminController** | `GET` | `/api/admin/accounts` | Returns staff and executive profiles (admin session required). |
+| **AdminController** | `POST` | `/api/admin/accounts` | Provisions a new staff or admin user account. |
+| **AdminController** | `PUT` | `/api/admin/accounts` | Updates existing staff profile. |
+| **AdminController** | `DELETE`| `/api/admin/accounts?id=`| Removes staff account with self-deletion protection. |
+| **AdminController** | `POST` | `/api/admin/reset` | Resets local store to seed state. |
+| **AdminController** | `POST` | `/api/admin/simulate-checkout` | Simulates departure checkouts for stays ending today. |
+| **AdminController** | `GET` | `/api/payments` | Returns transaction logs from `PAYMENT_DETAILS`. |
+| **CloudflareController** | `GET` | `/api/cloudflare` | Live telemetry probe for D1 database and R2 bucket connectivity. |
+| **CloudflareController** | `POST` | `/api/cloudflare` | Saves D1/R2 configuration or triggers 1-click sync. |
+| **CloudflareController** | `POST` | `/api/cloudflare/sync` | Executes `migrations/0001_initial_schema.sql` and `migrations/seed.sql` on D1. |
+| **MediaController** | `POST` | `/api/upload` | Multipart image upload to Cloudflare R2 with local mirror caching. |
+| **MediaController** | `GET` | `/api/media/*` | Serves media assets from Cloudflare R2 or local cache. |
 
 ---
 
-## 5. Frontend Architecture & Components
+## 7. Running the Application
 
-The frontend is housed in [src/components/](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/) and organized into two primary user surfaces:
+### 1. Start Both Services Concurrently
+From the root directory:
+```bash
+npm run dev
+```
+- **Nuxt 3 Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Nest.js API**: [http://localhost:4000/api](http://localhost:4000/api)
 
-### A. Guest Portal (`/`)
-1. **[Hero.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/Hero.tsx)**:
-   - High-impact visual header with responsive branding, tagline, quick reservation button, and anchor navigation.
-2. **[Navbar.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/Navbar.tsx)**:
-   - Floating header with smooth scroll links (`#haven`, `#suites`, `#amenities`), mobile drawer hamburger menu, and "Verify Booking" modal trigger.
-3. **[SuitesSection.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/SuitesSection.tsx)**:
-   - Interactive catalog displaying the 8 luxury suite tiers.
-   - Shows guest capacity badges, high-resolution imagery, feature tags, starting nightly rate, and a "Book Suite" trigger. Includes multi-page pagination.
-4. **[ReservationModal.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/ReservationModal.tsx)**:
-   - Multi-step booking experience with automatic night calculation, guest details inputs, date validation, and payment option selection:
-     - **E-Wallet** (GCash, Maya, GrabPay)
-     - **Pay at Counter** (Front desk settlement upon check-in)
-5. **[VerifyBookingModal.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/VerifyBookingModal.tsx)**:
-   - Passwordless verification system allowing guests to input their email and view active stay dates, room number, and booking confirmation without needing an account password.
-6. **[HavenOverview.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/HavenOverview.tsx)** & **[AmenitiesSection.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/AmenitiesSection.tsx)**:
-   - Rich brand storytelling highlighting private plunge pools, helicopter transfers, Michelin-star dining, and spa treatments.
+### 2. Run Independently
+To run either service in its own terminal:
+```bash
+# Terminal 1: Nest.js Backend
+npm run dev:backend
 
----
+# Terminal 2: Nuxt 3 Frontend
+npm run dev:frontend
+```
 
-### B. Admin Command Center (`/admin`)
-1. **[AdminLoginGate.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/AdminLoginGate.tsx)**:
-   - Clean, security-focused authentication view for managers and staff. Does not leak test credentials; directly authenticates against the database.
-2. **[AdminHeader.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/AdminHeader.tsx)**:
-   - Management toolbar showing logged-in user profile, role badge, quick actions (`+ Add Suite`, `Accounts`, `Export Report`, `Cloudflare D1 Status`, and `Logout`).
-3. **[AdminKPIs.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/AdminKPIs.tsx)**:
-   - Executive dashboard reporting Total Revenue (₱), Occupancy Rate (%), Pending Checkouts Today, Average Stay Duration, and a dynamic 7-day occupancy trend chart.
-4. **[RoomInventoryGrid.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/RoomInventoryGrid.tsx)**:
-   - Real-time room cards grouped by floor.
-   - Allows instant inline status changes (`Available`, `Occupied`, `Maintenance`) that persist to the database and update occupancy KPIs in real time.
-5. **[BookingsTable.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/BookingsTable.tsx)** & **[PaymentLogs.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/PaymentLogs.tsx)**:
-   - Searchable, filterable ledger of hotel reservations and audited financial transactions.
-6. **[StaffAccountsModal.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/StaffAccountsModal.tsx)**:
-   - Full CRUD staff directory allowing General Managers to provision, update, and remove internal staff accounts with self-deletion guards.
-7. **[AddSuiteModal.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/AddSuiteModal.tsx)**:
-   - Modal for adding new accommodations. Supports drag-and-drop image uploads directly into Cloudflare R2 and collision-free room number assignment.
-8. **[CloudflareD1Modal.tsx](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/components/admin/CloudflareD1Modal.tsx)**:
-   - Live telemetry inspector for Cloudflare D1 edge database connectivity, credentials verification, and 1-click database synchronization.
+### 3. Production Build
+```bash
+npm run build
+```
+This builds both the NestJS server (`backend/dist`) and the Nuxt 3 production bundle (`frontend/.output`).
 
----
+### 4. Cloudflare D1 Management Commands
+```bash
+# Execute initial schema migration remotely on Cloudflare D1
+npm run d1:migrate
 
-## 6. Backend & API Route Handlers
-
-All endpoints reside in [src/app/api/](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/app/api/) following standard Next.js Route Handler conventions:
-
-| Route Path | HTTP Methods | Description |
-| :--- | :--- | :--- |
-| `/api/auth/login` | `POST` | Authenticates management credentials against Cloudflare D1/local database; sets signed HTTP-only cookie. |
-| `/api/auth/logout` | `POST` | Invalidates active management cookie session. |
-| `/api/auth/me` | `GET` | Validates session token and returns active manager details. |
-| `/api/rooms` | `GET` | Returns all physical rooms with joined suite categories and live statuses. |
-| `/api/rooms/status` | `PUT` | Toggles room status between `available`, `occupied`, and `maintenance`. |
-| `/api/rooms/create` | `POST` | Provisions a new suite category, uploads media to R2, and registers physical room. |
-| `/api/bookings` | `GET`, `POST` | Retrieves reservation rosters or creates new guest booking with associated payment record. |
-| `/api/bookings/verify` | `POST` | Allows guests to retrieve stay records via email without an account password. |
-| `/api/admin/metrics` | `GET` | Computes revenue aggregates, occupancy percentage, and weekly trend graphs. |
-| `/api/admin/accounts` | `GET`, `POST`, `PUT`, `DELETE` | Full management CRUD for internal staff and executive profiles. |
-| `/api/cloudflare` | `GET` | Inspects connection status, account ID, and database table row counts. |
-| `/api/cloudflare/sync` | `POST` | Executes `0001_initial_schema.sql` and `seed.sql` on the live Cloudflare D1 instance. |
-| `/api/media/suites/[filename]` | `GET` | Fallback stream handler for locally saved suite media assets. |
-
----
-
-## 7. Storage & Cloudflare Edge Services
-
-### Cloudflare D1 (Database)
-- Configured via `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_API_TOKEN`.
-- Client logic in [src/lib/cloudflare-d1.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/lib/cloudflare-d1.ts).
-- Automatically executes batched parameterized SQL queries against Cloudflare's global edge network.
-
-### Cloudflare R2 (Object Storage)
-- Configured via S3-compatible credentials in [src/lib/cloudflare-r2.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/lib/cloudflare-r2.ts).
-- Used for saving suite photographs uploaded via the admin portal and automated JSON account backup archives.
-
-### Local JSON Store (`data/burgundy_store.json`)
-- Acts as a local zero-config database during development or offline testing.
-- Database abstraction in [src/lib/db.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/lib/db.ts) transparently reads from and writes to this store if external Cloudflare services are unreachable.
-
----
-
-## 8. Security & Authentication Architecture
-
-1. **Passwordless Guest Experience:**
-   - Guests do not have passwords. Reservations are linked to their email, and verification is performed via secure email + booking reference lookup.
-2. **Administrative Sessions:**
-   - Management sessions use HMAC-SHA256 signed tokens stored inside HTTP-only, `sameSite: 'lax'` cookies ([src/lib/auth.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/lib/auth.ts)).
-3. **Role-Based Authorization:**
-   - Management users logged into `/admin` possess unified administrative authorization to oversee operations, change room statuses, and update staff records.
-   - Self-deletion protection prevents administrators from accidentally deleting their own currently active account.
-4. **Cloudflare Zero Trust / Access Support:**
-   - Headers (`cf-access-authenticated-user-email` and `cf-access-jwt-assertion`) are parsed in [src/lib/cloudflare-auth.ts](file:///c:/Users/Ian/OneDrive/Desktop/cha/burgundysuite/src/lib/cloudflare-auth.ts) to support enterprise SSO when deployed behind Cloudflare Access.
-
----
-
-## 9. Running and Deploying
-
-### Prerequisites
-- Node.js 18+ (tested on Node.js v24)
-- npm or yarn
-
-### Setup Instructions
-1. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-2. **Environment Configuration:**
-   Copy `.env.example` to `.env.local` and configure your credentials:
-   ```bash
-   cp .env.example .env.local
-   ```
-3. **Start Development Server:**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) for the guest portal and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin portal.
-
-4. **Sync Cloudflare D1 Database:**
-   Log into the admin portal, open the **Cloudflare D1** modal, and click **"1-Click Initialize & Sync D1"** (or send `POST /api/cloudflare/sync`).
+# Seed remote Cloudflare D1 database
+npm run d1:seed
+```

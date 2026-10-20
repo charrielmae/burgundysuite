@@ -127,6 +127,62 @@
       "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-10-15T08:20:44.376Z"
+    },
+    {
+      "user_id": 17,
+      "user_name": "guest_marcus_17",
+      "password_hash": "",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T05:40:55.073Z"
+    },
+    {
+      "user_id": 18,
+      "user_name": "guest_marcus_18",
+      "password_hash": "",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T05:43:20.102Z"
+    },
+    {
+      "user_id": 19,
+      "user_name": "guest_victoria_19",
+      "password_hash": "",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T07:23:41.265Z"
+    },
+    {
+      "user_id": 20,
+      "user_name": "guest_alexander_20",
+      "password_hash": "guest_unregistered",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T07:40:53.729Z"
+    },
+    {
+      "user_id": 21,
+      "user_name": "guest_elena_21",
+      "password_hash": "guest_unregistered",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T07:51:09.083Z"
+    },
+    {
+      "user_id": 22,
+      "user_name": "staff_rodrigo_1792483719695",
+      "password_hash": "argon2id$custom$staffpassword123",
+      "user_role": "staff",
+      "acc_status": "active",
+      "created_date": "2026-10-20T08:08:39.708Z"
+    },
+    {
+      "user_id": 23,
+      "user_name": "guest_benhard_23",
+      "password_hash": "guest_unregistered",
+      "user_role": "guest",
+      "acc_status": "active",
+      "created_date": "2026-10-20T08:31:15.874Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -177,6 +233,14 @@
       "last_name": "Dela Cruz",
       "position": "Staff Concierge Lead",
       "contact_number": "+63 917 123 4567"
+    },
+    {
+      "staff_id": 107,
+      "user_id": 22,
+      "first_name": "Rodrigo",
+      "last_name": "Diaz",
+      "position": "Chief Executive Sommelier",
+      "contact_number": "+63 920 123 9988"
     }
   ],
   "GUEST_DETAILS": [
@@ -289,6 +353,72 @@
       "contact_number": "+639188887777",
       "email_address": "elena.reyes@example.ph",
       "address": "BGC Taguig"
+    },
+    {
+      "user_id": 17,
+      "first_name": "Marcus",
+      "last_name": "Sterling",
+      "birth_date": "1988-06-14",
+      "nationality": "British",
+      "civil_status": "Married",
+      "contact_number": "+44 7700 900123",
+      "email_address": "marcus.sterling@monaco-holdings.co.uk",
+      "address": "45 Knightsbridge, London SW1X 7LY"
+    },
+    {
+      "user_id": 18,
+      "first_name": "Marcus",
+      "last_name": "Sterling",
+      "birth_date": "1988-06-14",
+      "nationality": "British",
+      "civil_status": "Married",
+      "contact_number": "+44 7700 900123",
+      "email_address": "marcussterling@gmail.com",
+      "address": "45 Knightsbridge, London SW1X 7LY"
+    },
+    {
+      "user_id": 19,
+      "first_name": "Victoria",
+      "last_name": "Vanderbilt",
+      "birth_date": "1992-04-18",
+      "nationality": "American",
+      "civil_status": "Single",
+      "contact_number": "+1 212 555 9811",
+      "email_address": "victoria.vanderbilt@manhattan-ny.us",
+      "address": "740 Park Ave, New York, NY 10021"
+    },
+    {
+      "user_id": 20,
+      "first_name": "Alexander",
+      "last_name": "Pierce",
+      "birth_date": "1992-04-18",
+      "nationality": "Filipino",
+      "civil_status": "Single",
+      "contact_number": "+63 918 123 4567",
+      "email_address": "alexander.pierce@haven.ph",
+      "address": "Tower 2, Ayala Avenue, Makati City"
+    },
+    {
+      "user_id": 21,
+      "first_name": "Elena",
+      "last_name": "Rostova",
+      "birth_date": "1994-08-22",
+      "nationality": "Swiss",
+      "civil_status": "Single",
+      "contact_number": "+41 79 999 0000",
+      "email_address": "elena.rostova@geneva-wealth.ch",
+      "address": "Rue du Rhone 42, 1204 Geneva, Switzerland"
+    },
+    {
+      "user_id": 23,
+      "first_name": "Benhard",
+      "last_name": "Awanon",
+      "birth_date": "1990-06-15",
+      "nationality": "Filipino",
+      "civil_status": "Single",
+      "contact_number": "09664815395",
+      "email_address": "awanonbenhard@gmail.com",
+      "address": "Konoha, Land of Fire"
     }
   ],
   "ROOM_TYPE_DETAILS": [
@@ -403,6 +533,20 @@
         "Personal Butler",
         "Sunset Deck"
       ]
+    },
+    {
+      "room_type_id": 9,
+      "room_type": "Grand Sapphire Oceanfront Villa",
+      "room_capacity": 5,
+      "rate_per_night": 88000,
+      "description": "Custom cliffside villa with infinity ocean pool, private butler service, and private yacht charter.",
+      "image_url": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1200&q=80",
+      "badge": "Up to 5 Guests",
+      "features": [
+        "Private Infinity Pool",
+        "24/7 Butler Service",
+        "Private Yacht Charter"
+      ]
     }
   ],
   "ROOM_DETAILS": [
@@ -418,7 +562,7 @@
       "room_type_id": 2,
       "room_number": 102,
       "floor_number": 1,
-      "room_status": "available"
+      "room_status": "occupied"
     },
     {
       "room_id": 3,
@@ -432,7 +576,7 @@
       "room_type_id": 5,
       "room_number": 202,
       "floor_number": 2,
-      "room_status": "maintenance"
+      "room_status": "occupied"
     },
     {
       "room_id": 5,
@@ -461,6 +605,13 @@
       "room_number": 501,
       "floor_number": 5,
       "room_status": "available"
+    },
+    {
+      "room_id": 9,
+      "room_type_id": 9,
+      "room_number": 501,
+      "floor_number": 5,
+      "room_status": "maintenance"
     }
   ],
   "ROOM_BOOKING": [
@@ -523,6 +674,76 @@
       "check_out_date": "2026-10-28",
       "total_amount": 9600,
       "booking_status": "confirmed"
+    },
+    {
+      "booking_id": 1007,
+      "user_id": 17,
+      "room_id": 2,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-10-21",
+      "check_out_date": "2026-10-22",
+      "total_amount": 420,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1008,
+      "user_id": 18,
+      "room_id": 1,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-10-21",
+      "check_out_date": "2026-10-24",
+      "total_amount": 750,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1009,
+      "user_id": 19,
+      "room_id": 4,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-11-01",
+      "check_out_date": "2026-11-05",
+      "total_amount": 2200,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1010,
+      "user_id": 20,
+      "room_id": 2,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-11-01",
+      "check_out_date": "2026-11-05",
+      "total_amount": 1680,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1011,
+      "user_id": 21,
+      "room_id": 3,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-11-10",
+      "check_out_date": "2026-11-15",
+      "total_amount": 3750,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1012,
+      "user_id": 21,
+      "room_id": 1,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-12-01",
+      "check_out_date": "2026-12-05",
+      "total_amount": 1000,
+      "booking_status": "checked-in"
+    },
+    {
+      "booking_id": 1013,
+      "user_id": 23,
+      "room_id": 2,
+      "booking_date": "2026-10-20",
+      "check_in_date": "2026-10-21",
+      "check_out_date": "2026-10-22",
+      "total_amount": 420,
+      "booking_status": "checked-in"
     }
   ],
   "PAYMENT_DETAILS": [
@@ -605,6 +826,62 @@
       "amount": 500,
       "payment_status": "paid",
       "payment_date": "2026-10-15T05:43:27.377Z"
+    },
+    {
+      "payment_id": 511,
+      "booking_id": 1007,
+      "payment_method": "E-Wallet",
+      "amount": 420,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T05:40:55.073Z"
+    },
+    {
+      "payment_id": 512,
+      "booking_id": 1008,
+      "payment_method": "E-Wallet",
+      "amount": 750,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T05:43:20.102Z"
+    },
+    {
+      "payment_id": 513,
+      "booking_id": 1009,
+      "payment_method": "American Express Centurion",
+      "amount": 2200,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T07:23:41.265Z"
+    },
+    {
+      "payment_id": 514,
+      "booking_id": 1010,
+      "payment_method": "E-Wallet",
+      "amount": 1680,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T07:40:53.729Z"
+    },
+    {
+      "payment_id": 515,
+      "booking_id": 1011,
+      "payment_method": "E-Wallet",
+      "amount": 3750,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T07:51:09.083Z"
+    },
+    {
+      "payment_id": 516,
+      "booking_id": 1012,
+      "payment_method": "Pay at Counter",
+      "amount": 1000,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T07:53:37.261Z"
+    },
+    {
+      "payment_id": 517,
+      "booking_id": 1013,
+      "payment_method": "E-Wallet",
+      "amount": 420,
+      "payment_status": "paid",
+      "payment_date": "2026-10-20T08:31:15.874Z"
     }
   ]
 }
