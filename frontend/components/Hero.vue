@@ -31,10 +31,8 @@
       </h1>
 
       <!-- Body Narrative -->
-      <p class="max-w-2xl text-base sm:text-lg text-[#F5EFEB]/90 font-light leading-relaxed mb-12 drop-shadow">
-        Welcome to <strong class="font-semibold text-white">Burgundy Suite & Resort</strong>
-        —where timeless architectural splendor meets the tranquil waters of Emerald Bay. Indulge in
-        bespoke luxury tailored to your every moment.
+      <p class="max-w-3xl text-base sm:text-lg text-[#F5EFEB]/90 font-light leading-relaxed mb-12 drop-shadow">
+        Welcome to <strong class="font-semibold text-white">Burgundy Suite</strong>, your premier smart booking platform designed to make finding and reserving your ideal stay effortless. We believe that booking accommodations should be as relaxing as the vacation itself.
       </p>
 
       <!-- Floating Availability Pill Card -->
