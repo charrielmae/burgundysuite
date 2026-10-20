@@ -37,42 +37,33 @@ async function bootstrap(): Promise<any> {
 
   app.setGlobalPrefix('api');
 
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    await app.init();
-    logger.log('Burgundy Suite & Resort NestJS API initialized for Vercel serverless');
-  } else {
-    const port = process.env.PORT ?? 4000;
-    await app.listen(port, '0.0.0.0');
-    logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
-  }
+  const port = process.env.PORT ?? 4000;
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Burgundy Suite & Resort NestJS API running on: http://0.0.0.0:${port}/api`);
 
   isInitialized = true;
   return server;
 }
 
-// If running locally as standalone server, start immediately
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-  bootstrap();
-}
+// Bootstrap application immediately so server listens on process.env.PORT
+initPromise = bootstrap().catch((err) => {
+  console.error('Fatal backend bootstrap error:', err);
+});
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
   try {
-    if (!isInitialized) {
-      if (!initPromise) {
-        initPromise = bootstrap();
-      }
+    if (!isInitialized && initPromise) {
       await initPromise;
     }
 
-    // Handle path normalization for rewrites whether /api prefix was preserved or stripped
     if (req.url && !req.url.startsWith('/api')) {
       req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
     }
 
     return server(req, res);
   } catch (err: any) {
-    console.error('Fatal backend bootstrap/handler error:', err);
+    console.error('Fatal backend handler error:', err);
     if (!res.headersSent) {
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json');
@@ -80,8 +71,6 @@ export default async function handler(req: any, res: any) {
         JSON.stringify({
           success: false,
           error: err?.message || 'Internal Server Error',
-          name: err?.name,
-          stack: err?.stack,
         })
       );
     }
