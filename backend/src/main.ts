@@ -6,6 +6,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 
 const server = express();
+server.use(cookieParser());
 let isInitialized = false;
 
 async function bootstrap() {
@@ -24,6 +25,8 @@ async function bootstrap() {
     allowedHeaders: [
       'Content-Type',
       'Authorization',
+      'X-Admin-Token',
+      'x-admin-token',
       'cf-access-authenticated-user-email',
       'cf-access-jwt-assertion',
     ],

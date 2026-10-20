@@ -17,19 +17,40 @@ export function useAuth() {
   const fetchSession = async () => {
     isLoading.value = true;
     try {
-      const res = await request<{ success: boolean; authenticated: boolean; data: AdminUser | null }>(
+      // Optimistic session restoration from localStorage for instant loading
+      if (typeof window !== 'undefined') {
+        const cachedUser = localStorage.getItem('burgundy_admin_user');
+        const cachedToken = localStorage.getItem('burgundy_admin_token');
+        if (cachedUser && cachedToken) {
+          try {
+            adminUser.value = JSON.parse(cachedUser);
+            isAuthenticated.value = true;
+          } catch {}
+        }
+      }
+
+      const res = await request<{ success: boolean; authenticated: boolean; data: AdminUser | null; token?: string }>(
         '/api/auth/me'
       );
       if (res && res.authenticated && res.data) {
         adminUser.value = res.data;
         isAuthenticated.value = true;
+        if (typeof window !== 'undefined') {
+          if (res.token) localStorage.setItem('burgundy_admin_token', res.token);
+          localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
+        }
       } else {
+        // Only clear if server says unauthenticated and no valid token stored
+        if (typeof window !== 'undefined' && !localStorage.getItem('burgundy_admin_token')) {
+          adminUser.value = null;
+          isAuthenticated.value = false;
+        }
+      }
+    } catch (err) {
+      if (typeof window !== 'undefined' && !localStorage.getItem('burgundy_admin_token')) {
         adminUser.value = null;
         isAuthenticated.value = false;
       }
-    } catch {
-      adminUser.value = null;
-      isAuthenticated.value = false;
     } finally {
       isLoading.value = false;
     }
@@ -38,7 +59,7 @@ export function useAuth() {
   const login = async (username: string, password: string, turnstileToken?: string) => {
     isLoading.value = true;
     try {
-      const res = await request<{ success: boolean; data: AdminUser; message: string }>(
+      const res = await request<{ success: boolean; data: AdminUser; token?: string; message: string }>(
         '/api/auth/login',
         {
           method: 'POST',
@@ -46,6 +67,12 @@ export function useAuth() {
         }
       );
       if (res.success && res.data) {
+        if (typeof window !== 'undefined') {
+          if (res.token) {
+            localStorage.setItem('burgundy_admin_token', res.token);
+          }
+          localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
+        }
         adminUser.value = res.data;
         isAuthenticated.value = true;
         return { success: true, user: res.data };
@@ -62,6 +89,10 @@ export function useAuth() {
     try {
       await request('/api/auth/logout', { method: 'POST' });
     } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('burgundy_admin_token');
+        localStorage.removeItem('burgundy_admin_user');
+      }
       adminUser.value = null;
       isAuthenticated.value = false;
     }

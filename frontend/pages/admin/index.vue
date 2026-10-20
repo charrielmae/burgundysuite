@@ -159,8 +159,7 @@ onMounted(async () => {
 });
 
 const handleLoginSuccess = async () => {
-  await fetchSession();
-  loadDashboardData();
+  await loadDashboardData();
 };
 
 const handleLogout = async () => {

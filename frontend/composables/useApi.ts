@@ -14,6 +14,17 @@ export function useApi() {
       headers.set('Content-Type', 'application/json');
     }
 
+    // Attach admin token from localStorage if available (supports cookie-less / serverless proxies)
+    if (typeof window !== 'undefined') {
+      try {
+        const token = localStorage.getItem('burgundy_admin_token');
+        if (token && !headers.has('Authorization')) {
+          headers.set('Authorization', `Bearer ${token}`);
+          headers.set('X-Admin-Token', token);
+        }
+      } catch {}
+    }
+
     const response = await fetch(url, {
       ...options,
       headers,

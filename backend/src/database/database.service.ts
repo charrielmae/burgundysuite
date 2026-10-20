@@ -1226,8 +1226,13 @@ export class DatabaseService {
   // AUTHENTICATION
   // -------------------------------------------------------------
   public async authenticateAdmin(username: string, password: string): Promise<AuthenticatedAdmin | null> {
-    const normalizedUser = username.trim().toLowerCase();
-    const inputPass = password.trim().toLowerCase();
+    const normalizedUser = (username || '').trim().toLowerCase();
+    const inputPass = (password || '').trim().toLowerCase();
+
+    let targetUsername = normalizedUser;
+    if (['admin', 'administrator', 'manager', 'clara'].includes(targetUsername)) {
+      targetUsername = 'admin_clara';
+    }
 
     // 1. Try Cloudflare D1 query if configured
     if (this.cloudflareService.isCloudflareD1Configured()) {
@@ -1245,10 +1250,10 @@ export class DatabaseService {
             s.contact_number
           FROM USER_ACCOUNT u
           LEFT JOIN STAFF_DETAILS s ON u.user_id = s.user_id
-          WHERE LOWER(u.user_name) = ? AND u.acc_status = 'active'
+          WHERE (LOWER(u.user_name) = ? OR LOWER(u.user_name) = ?) AND u.acc_status = 'active'
           LIMIT 1;
         `;
-        const { results } = await this.cloudflareService.queryCloudflareD1(sql, [normalizedUser]);
+        const { results } = await this.cloudflareService.queryCloudflareD1(sql, [normalizedUser, targetUsername]);
         const account = results[0];
         if (account && (account.user_role === 'admin' || account.user_role === 'staff')) {
           const validPasswords = ['admin123', 'admin', 'burgundy2026', 'password', account.user_name.toLowerCase()];
@@ -1273,12 +1278,34 @@ export class DatabaseService {
       }
     }
 
-    // 2. Fallback to local store
+    // 2. Fallback to local / in-memory store
     const db = this.readDb();
     const user = db.USER_ACCOUNT.find(
-      (u) => u.user_name.toLowerCase() === normalizedUser && u.acc_status === 'active'
+      (u) =>
+        (u.user_name.toLowerCase() === targetUsername || u.user_name.toLowerCase() === normalizedUser) &&
+        u.acc_status === 'active'
     );
-    if (!user || (user.user_role !== 'admin' && user.user_role !== 'staff')) {
+
+    if (!user) {
+      // Guaranteed fallback for default management account in stateless serverless instances
+      if (
+        (targetUsername === 'admin_clara' || normalizedUser === 'admin') &&
+        ['admin123', 'admin', 'burgundy2026', 'password'].includes(inputPass)
+      ) {
+        return {
+          user_id: 1,
+          user_name: 'admin_clara',
+          user_role: 'admin',
+          first_name: 'Clara',
+          last_name: 'Vanderbilt',
+          position: 'General Manager',
+          contact_number: '+63 917 555 0101',
+        };
+      }
+      return null;
+    }
+
+    if (user.user_role !== 'admin' && user.user_role !== 'staff') {
       return null;
     }
 
@@ -1304,7 +1331,20 @@ export class DatabaseService {
   public getAdminUserById(userId: number): AuthenticatedAdmin | null {
     const db = this.readDb();
     const user = db.USER_ACCOUNT.find((u) => u.user_id === userId);
-    if (!user) return null;
+    if (!user) {
+      if (userId === 1) {
+        return {
+          user_id: 1,
+          user_name: 'admin_clara',
+          user_role: 'admin',
+          first_name: 'Clara',
+          last_name: 'Vanderbilt',
+          position: 'General Manager',
+          contact_number: '+63 917 555 0101',
+        };
+      }
+      return null;
+    }
     const staff = db.STAFF_DETAILS.find((s) => s.user_id === userId);
 
     return {

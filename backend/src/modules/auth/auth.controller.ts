@@ -58,11 +58,12 @@ export class AuthController {
     }
 
     const token = this.authService.createSessionToken(adminUser);
+    const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
 
     res.cookie(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -70,13 +71,19 @@ export class AuthController {
     return {
       success: true,
       data: adminUser,
+      token,
       message: `Welcome back, ${adminUser.first_name} ${adminUser.last_name}!`,
     };
   }
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+    const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+    res.clearCookie(SESSION_COOKIE_NAME, {
+      path: '/',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+    });
     return {
       success: true,
       message: 'Signed out successfully.',
@@ -85,8 +92,28 @@ export class AuthController {
 
   @Get('me')
   async me(@Req() req: Request) {
-    // 1. Check HTTP-only cookie
-    const token = req.cookies?.[SESSION_COOKIE_NAME];
+    // 1. Check token from multiple resilient channels:
+    let token: string | undefined = req.cookies?.[SESSION_COOKIE_NAME];
+
+    // Fallback: raw Cookie header parsing
+    if (!token && req.headers.cookie) {
+      const match = req.headers.cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]*)`));
+      if (match) token = decodeURIComponent(match[1]);
+    }
+
+    // Fallback: Authorization Bearer header
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
+      }
+    }
+
+    // Fallback: Custom X-Admin-Token header
+    if (!token && req.headers['x-admin-token']) {
+      token = (req.headers['x-admin-token'] as string).trim();
+    }
+
     if (token) {
       const payload = this.authService.verifySessionToken(token);
       if (payload) {
@@ -96,6 +123,7 @@ export class AuthController {
             success: true,
             authenticated: true,
             data: user,
+            token,
           };
         }
         return {
@@ -110,6 +138,7 @@ export class AuthController {
             position: 'Administrator',
             contact_number: '+63 917 555 8822',
           },
+          token,
         };
       }
     }
