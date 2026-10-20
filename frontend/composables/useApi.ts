@@ -31,9 +31,16 @@ export function useApi() {
       credentials: 'include', // Ensures HTTP-only session cookies are sent
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text || `HTTP ${response.status}: ${response.statusText}` };
+    }
+
     if (!response.ok) {
-      throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(data.message || data.error || data.statusMessage || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return data as T;

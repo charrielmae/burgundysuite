@@ -23,7 +23,14 @@ export class AdminController {
   ) {}
 
   private getSessionOrThrow(req: Request) {
-    const token = req.cookies?.[SESSION_COOKIE_NAME];
+    let token = req.cookies?.[SESSION_COOKIE_NAME];
+    if (!token && typeof req.headers.authorization === 'string' && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.substring(7).trim();
+    }
+    if (!token && typeof req.headers['x-admin-token'] === 'string') {
+      token = req.headers['x-admin-token'];
+    }
+
     if (token) {
       const payload = this.authService.verifySessionToken(token);
       if (payload) {
