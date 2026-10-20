@@ -54,8 +54,34 @@ appPromise = bootstrap().catch((err) => {
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
-  await appPromise;
-  return server(req, res);
+  try {
+    await appPromise;
+
+    // Handle path normalization for rewrites whether /api prefix was preserved or stripped
+    if (req.url && !req.url.startsWith('/api')) {
+      req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+    }
+
+    if (res.writableEnded) return;
+
+    return await new Promise<void>((resolve, reject) => {
+      res.on('finish', () => resolve());
+      res.on('close', () => resolve());
+      res.on('error', (err: any) => reject(err));
+
+      server(req, res, (err: any) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+  } catch (handlerErr) {
+    console.error('Vercel serverless handler uncaught error:', handlerErr);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: false, error: (handlerErr as Error).message || 'Server error' }));
+    }
+  }
 }
 
 // Support CommonJS module.exports for Vercel legacy serverless runners
@@ -63,5 +89,10 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = handler;
   (module.exports as any).default = handler;
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('Unhandled Rejection caught in backend process:', reason);
+});
+
 
 
