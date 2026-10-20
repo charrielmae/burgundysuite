@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { CloudflareService } from '../modules/cloudflare/cloudflare.service';
 import {
   UserAccount,
@@ -337,47 +338,87 @@ const INITIAL_DATA: DatabaseData = {
 @Injectable()
 export class DatabaseService {
   private readonly logger = new Logger(DatabaseService.name);
+  private memoryDb: DatabaseData | null = null;
 
   constructor(private readonly cloudflareService: CloudflareService) {}
 
   private getStoreFilePath(): string {
-    const rootDir = this.cloudflareService.getRootDir();
-    const storePath = path.join(rootDir, 'data', 'burgundy_store.json');
-    if (!fs.existsSync(path.dirname(storePath))) {
-      fs.mkdirSync(path.dirname(storePath), { recursive: true });
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      const tmpDir = path.join(os.tmpdir(), 'burgundy-data');
+      try {
+        if (!fs.existsSync(tmpDir)) {
+          fs.mkdirSync(tmpDir, { recursive: true });
+        }
+      } catch {
+        // ignore error in serverless environment
+      }
+      return path.join(tmpDir, 'burgundy_store.json');
     }
-    return storePath;
+
+    try {
+      const rootDir = this.cloudflareService.getRootDir();
+      const storePath = path.join(rootDir, 'data', 'burgundy_store.json');
+      const dir = path.dirname(storePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      return storePath;
+    } catch {
+      return path.join(os.tmpdir(), 'burgundy_store.json');
+    }
   }
 
   public readDb(): DatabaseData {
-    const filePath = this.getStoreFilePath();
-    if (!fs.existsSync(filePath)) {
-      this.writeDb(INITIAL_DATA);
-      return JSON.parse(JSON.stringify(INITIAL_DATA));
+    if (this.memoryDb && this.memoryDb.ROOM_TYPE_DETAILS && this.memoryDb.ROOM_TYPE_DETAILS.length > 0) {
+      return this.memoryDb;
     }
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const data: DatabaseData = JSON.parse(content);
-      if (!data.ROOM_TYPE_DETAILS || data.ROOM_TYPE_DETAILS.length === 0) {
-        this.writeDb(INITIAL_DATA);
-        return JSON.parse(JSON.stringify(INITIAL_DATA));
+
+    const candidatePaths = [
+      this.getStoreFilePath(),
+      path.join(process.cwd(), 'data', 'burgundy_store.json'),
+      path.join(process.cwd(), '..', 'data', 'burgundy_store.json'),
+      path.resolve(__dirname, '..', '..', 'data', 'burgundy_store.json'),
+      path.resolve(__dirname, '..', '..', '..', 'data', 'burgundy_store.json'),
+    ];
+
+    for (const p of candidatePaths) {
+      try {
+        if (fs.existsSync(p)) {
+          const content = fs.readFileSync(p, 'utf8');
+          const data: DatabaseData = JSON.parse(content);
+          if (data.ROOM_TYPE_DETAILS && data.ROOM_TYPE_DETAILS.length > 0) {
+            this.memoryDb = data;
+            return this.memoryDb;
+          }
+        }
+      } catch {
+        // try next candidate
       }
-      return data;
-    } catch (e) {
-      this.logger.error('Error reading local JSON db, restoring initial data:', e);
-      this.writeDb(INITIAL_DATA);
-      return JSON.parse(JSON.stringify(INITIAL_DATA));
     }
+
+    this.memoryDb = JSON.parse(JSON.stringify(INITIAL_DATA));
+    this.writeDb(this.memoryDb);
+    return this.memoryDb;
   }
 
   public writeDb(data: DatabaseData): void {
-    const filePath = this.getStoreFilePath();
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    this.memoryDb = data;
+    try {
+      const filePath = this.getStoreFilePath();
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (err) {
+      this.logger.warn(`Could not persist to file system (operating in-memory): ${(err as Error).message}`);
+    }
   }
 
   public resetDatabase(): DatabaseData {
-    this.writeDb(INITIAL_DATA);
-    return JSON.parse(JSON.stringify(INITIAL_DATA));
+    this.memoryDb = JSON.parse(JSON.stringify(INITIAL_DATA));
+    this.writeDb(this.memoryDb);
+    return this.memoryDb;
   }
 
   // -------------------------------------------------------------
