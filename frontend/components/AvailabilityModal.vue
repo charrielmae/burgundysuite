@@ -95,23 +95,14 @@
                 </select>
               </div>
 
-              <!-- Nights & Refresh -->
-              <div class="flex items-end gap-2 pt-2 sm:pt-0">
-                <div class="flex-1 px-3 py-1.5 rounded-lg bg-[#381018]/60 border border-[#5A1C2A] text-center">
+              <!-- Length of Stay -->
+              <div class="flex flex-col justify-end">
+                <div class="px-3 py-1.5 rounded-lg bg-[#381018]/60 border border-[#5A1C2A] text-center">
                   <span class="text-[10px] text-white/50 block">Length of Stay</span>
                   <span class="text-xs font-bold text-[#E5C378]">
                     {{ nightsCount }} {{ nightsCount === 1 ? 'Night' : 'Nights' }}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  @click="triggerSearch"
-                  :disabled="loading"
-                  class="px-4 py-2 rounded-lg bg-[#E5C378] hover:bg-[#D4AF37] text-[#2B0E14] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" />
-                  <span>Update</span>
-                </button>
               </div>
             </div>
           </div>
@@ -249,21 +240,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Bottom Footer Note -->
-          <div class="px-6 py-3.5 bg-[#240A10] border-t border-[#5A1C2A] flex items-center justify-between text-xs text-white/60 shrink-0">
-            <span class="flex items-center gap-1.5">
-              <CheckCircle class="w-3.5 h-3.5 text-[#E5C378]" />
-              Checking availability does not hold a reservation or charge your card.
-            </span>
-            <button
-              type="button"
-              @click="$emit('close')"
-              class="text-white/60 hover:text-white underline cursor-pointer"
-            >
-              Close Window
-            </button>
-          </div>
         </div>
       </div>
     </Transition>
@@ -272,7 +248,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { X, Calendar, Users, RefreshCw, CheckCircle, ArrowRight } from 'lucide-vue-next';
+import { X, Calendar, Users, ArrowRight } from 'lucide-vue-next';
 import { useApi } from '../composables/useApi';
 
 interface RoomTypeDetails {
@@ -335,6 +311,12 @@ watch(
     }
   }
 );
+
+watch([localCheckIn, localCheckOut, localCategoryId], () => {
+  if (props.isOpen) {
+    triggerSearch();
+  }
+});
 
 const nightsCount = computed(() => {
   if (!localCheckIn.value || !localCheckOut.value) return 1;
