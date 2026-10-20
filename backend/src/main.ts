@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
@@ -56,19 +57,35 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
 
 // Default export for Vercel Serverless Function entrypoint
 export default async function handler(req: any, res: any) {
-  if (!isInitialized) {
-    if (!initPromise) {
-      initPromise = bootstrap();
+  try {
+    if (!isInitialized) {
+      if (!initPromise) {
+        initPromise = bootstrap();
+      }
+      await initPromise;
     }
-    await initPromise;
-  }
 
-  // Handle path normalization for rewrites whether /api prefix was preserved or stripped
-  if (req.url && !req.url.startsWith('/api')) {
-    req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
-  }
+    // Handle path normalization for rewrites whether /api prefix was preserved or stripped
+    if (req.url && !req.url.startsWith('/api')) {
+      req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+    }
 
-  return server(req, res);
+    return server(req, res);
+  } catch (err: any) {
+    console.error('Fatal backend bootstrap/handler error:', err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: err?.message || 'Internal Server Error',
+          name: err?.name,
+          stack: err?.stack,
+        })
+      );
+    }
+  }
 }
 
 // Support CommonJS module.exports for Vercel legacy serverless runners
@@ -76,6 +93,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = handler;
   (module.exports as any).default = handler;
 }
+
 
 
 
