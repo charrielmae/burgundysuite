@@ -3,7 +3,7 @@
     <Transition name="modal-backdrop">
       <div
         v-if="isOpen"
-        @click.self="$emit('cancel')"
+        @click.self="$emit('close')"
         class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-sm"
       >
         <div
@@ -91,6 +91,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'close'): void;
+  (e: 'cancel'): void;
   (e: 'confirm'): void;
 }>();
 </script>
