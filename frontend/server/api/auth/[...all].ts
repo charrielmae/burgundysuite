@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
         setCookie(event, SESSION_COOKIE_NAME, baSession.token, {
           httpOnly: true,
           secure: isProd,
-          sameSite: isProd ? 'none' : 'lax',
+          sameSite: 'lax',
           path: '/',
           maxAge: 7 * 24 * 60 * 60,
         });
@@ -115,7 +115,7 @@ export default defineEventHandler(async (event) => {
           setCookie(event, SESSION_COOKIE_NAME, `burgundy_session_${d1User.user_id}`, {
             httpOnly: true,
             secure: isProd,
-            sameSite: isProd ? 'none' : 'lax',
+            sameSite: 'lax',
             path: '/',
             maxAge: 7 * 24 * 60 * 60,
           });
@@ -201,7 +201,7 @@ export default defineEventHandler(async (event) => {
             setCookie(event, SESSION_COOKIE_NAME, `burgundy_session_${found.user_id}`, {
               httpOnly: true,
               secure: isProd,
-              sameSite: isProd ? 'none' : 'lax',
+              sameSite: 'lax',
               path: '/',
               maxAge: 7 * 24 * 60 * 60,
             });
@@ -238,7 +238,7 @@ export default defineEventHandler(async (event) => {
       setCookie(event, SESSION_COOKIE_NAME, 'burgundy_master_session_token', {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' : 'lax',
+        sameSite: 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60,
       });

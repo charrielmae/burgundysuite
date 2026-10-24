@@ -3,7 +3,7 @@ const D1_CONFIG = {
   databaseId: process.env.CLOUDFLARE_DATABASE_ID || '9b1eb0fe-1e04-44d1-9cc7-e1a800009618',
   apiToken:
     process.env.CLOUDFLARE_API_TOKEN ||
-    Buffer.from('Y2Z1dF9maE0ySTNib3NQeWVqU3VxZDdadW1jRzFDejRuQk9xNU5nVnpaZGEwNDYxYmUwMmM=', 'base64').toString('utf8'),
+    Buffer.from('Y2Z1dF9maE0ySTNib3NQeWVqU3VxZDdadW1jRzFDejRuQk9xNU5nVnpacGEwNDYxYmUwMmM=', 'base64').toString('utf8'),
 };
 
 export async function queryD1<T = any>(sql: string, params: any[] = []): Promise<T[]> {

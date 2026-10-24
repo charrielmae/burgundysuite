@@ -96,7 +96,35 @@ export function useAuth() {
         ? cleanIdentifier
         : `${cleanIdentifier.toLowerCase()}@burgundysuite.com`;
 
-      // 1. Primary: Better Auth signIn with Sentinel client protection & Dash tracking
+      // 1. Primary: Direct Auth API (/api/auth/login) - validates against live Cloudflare D1 database & staff accounts
+      try {
+        const res = await request<{ success: boolean; data: AdminUser; token?: string; message: string }>(
+          '/api/auth/login',
+          {
+            method: 'POST',
+            body: JSON.stringify({ username: cleanIdentifier, password, turnstileToken }),
+          }
+        );
+
+        if (res?.success && res?.data) {
+          if (typeof window !== 'undefined') {
+            if (res.token) {
+              localStorage.setItem('burgundy_admin_token', res.token);
+            }
+            localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
+          }
+          adminUser.value = res.data;
+          isAuthenticated.value = true;
+          return { success: true, user: res.data };
+        }
+      } catch (loginErr: any) {
+        // If 401 Unauthorized, we know credentials were rejected by D1/server
+        if (loginErr?.statusCode === 401 || loginErr?.message?.includes('Invalid credentials')) {
+          return { success: false, error: 'Invalid credentials. Please verify your username and password.' };
+        }
+      }
+
+      // 2. Fallback: Better Auth Sentinel client signIn
       try {
         const baRes = await authClient.signIn.email({
           email,
@@ -126,34 +154,8 @@ export function useAuth() {
           adminUser.value = mappedUser;
           isAuthenticated.value = true;
           return { success: true, user: mappedUser };
-        } else if (baRes?.error?.message) {
-          // If Better Auth explicitly reports error (e.g. invalid password)
-          // Also try legacy fallback below if user exists in legacy mock db
         }
-      } catch (baErr) {
-        // Continue to fallback
-      }
-
-      // 2. Fallback: Custom legacy endpoint (/api/auth/login)
-      const res = await request<{ success: boolean; data: AdminUser; token?: string; message: string }>(
-        '/api/auth/login',
-        {
-          method: 'POST',
-          body: JSON.stringify({ username: cleanIdentifier, password, turnstileToken }),
-        }
-      );
-
-      if (res.success && res.data) {
-        if (typeof window !== 'undefined') {
-          if (res.token) {
-            localStorage.setItem('burgundy_admin_token', res.token);
-          }
-          localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
-        }
-        adminUser.value = res.data;
-        isAuthenticated.value = true;
-        return { success: true, user: res.data };
-      }
+      } catch (baErr) {}
 
       return { success: false, error: 'Authentication failed. Please verify credentials.' };
     } catch (err) {
