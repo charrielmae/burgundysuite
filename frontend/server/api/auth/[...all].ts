@@ -256,5 +256,14 @@ export default defineEventHandler(async (event) => {
   // -------------------------------------------------------------
   // 4. BETTER AUTH NATIVE ENDPOINTS (/api/auth/sign-in/*, /dash/*, etc.)
   // -------------------------------------------------------------
-  return auth.handler(toWebRequest(event));
+  try {
+    return await auth.handler(toWebRequest(event));
+  } catch (err: any) {
+    console.error('[Better Auth Handler Error]:', err?.message || err);
+    return {
+      error: true,
+      message: err?.message || 'Authentication service error',
+    };
+  }
 });
+
