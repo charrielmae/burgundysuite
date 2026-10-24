@@ -9,50 +9,50 @@ const D1_CONFIG = {
 const ROOM_METADATA: Record<number, { image_url: string; badge: string; features: string[]; description: string }> = {
   1: {
     image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Coastal Classic',
-    features: ['Ocean Balcony', 'King Plush Bed', 'Walk-in Rain Shower', 'Complimentary Wine'],
+    badge: 'Up to 2 Guests',
+    features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
     description: 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
   },
   2: {
     image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Executive Choice',
-    features: ['Dedicated Executive Desk', 'Hydro Soak Tub', 'Espresso Bar', 'High-Speed Fiber'],
+    badge: 'Up to 3 Guests',
+    features: ['Deep Hydro Soak Tub', 'Executive Work Station', 'Dedicated High-Speed WiFi'],
     description: 'Designed for business and leisure, offering dedicated workspace and hydro tub.',
   },
   3: {
     image_url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80',
-    badge: 'VIP Presidential',
-    features: ['24/7 Butler Service', 'Private Plunge Pool', 'Double Vanity Marble', 'Sunset Terrace'],
+    badge: 'Up to 4 Guests',
+    features: ['Private Butler Service', 'Infinity Edge Plunge Pool', 'Grand Living Salon'],
     description: 'Expansive private suite with personal butler, living lounge, and ocean plunge pool.',
   },
   4: {
     image_url: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Ultra Luxury Peak',
-    features: ['Helipad VIP Transfer', 'Private Elevator Key', 'Panoramic 360° Glass', 'Private Chef Service'],
+    badge: 'Up to 6 Guests',
+    features: ['Direct Helipad Transfer', 'Private Elevator Keycard', '360° Glass Ocean View'],
     description: 'Top-floor 360-degree panorama, private elevator access, and helipad transfer.',
   },
   5: {
-    image_url: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Sunset Oasis',
-    features: ['Infinity Ocean Pool', 'Sunset Deck', 'Outdoor Rain Shower', 'In-Villa Dining'],
-    description: 'Standalone seaside villa overlooking the horizon with private infinity pool.',
+    image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+    badge: 'Up to 4 Guests',
+    features: ['Private Plunge Pool', 'Panoramic Sunset Deck', '24/7 Butler Service'],
+    description: 'Secluded seaside villa with private infinity plunge pool, oceanview sunset deck, and butler service.',
   },
   6: {
-    image_url: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Family Haven',
-    features: ['Multi-Bedroom Suite', 'Kid Arcade Corner', 'Full Gourmet Kitchen', 'Bespoke Family Concierge'],
-    description: 'Spacious multi-bedroom layout crafted for families seeking absolute comfort.',
+    image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+    badge: 'Up to 10 Guests',
+    features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
+    description: 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
   },
   7: {
-    image_url: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Royal Grandeur',
-    features: ['Bespoke Chandelier Lounge', 'Private Sommelier Cellar', 'Marble Sauna', 'Rolls Royce Chauffeur'],
-    description: 'The pinnacle of luxury hospitality with private sommelier cellar and sauna.',
+    image_url: '/api/media/suites/1792035835546-emerald-villa-ocean.png',
+    badge: 'Up to 8 Guests',
+    features: ['Helipad VIP Transfer', 'Private Infinity Plunge Pool', 'Dedicated Butler Service'],
+    description: 'Ultra-exclusive 360-degree top-floor penthouse with private helicopter charter and infinity ocean plunge pool.',
   },
   8: {
     image_url: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80',
-    badge: 'Oceanfront Gem',
-    features: ['Private Lagoon Access', 'Sunken Lounge', 'Designer King Suite', 'Stargazing Platform'],
+    badge: 'Up to 4 Guests',
+    features: ['Private Lagoon Access', 'Sunken Lounge', 'Designer King Suite'],
     description: 'Exclusive lagoon-side sanctuary with sunken lounge and open stargazing roof.',
   },
 };
@@ -631,6 +631,41 @@ export async function getRoomsFromD1(): Promise<any[]> {
     });
   } catch (err) {
     console.warn('[Cloudflare D1 Rooms Warning]:', err);
+    return [];
+  }
+}
+
+export async function getRoomTypesFromD1(): Promise<any[]> {
+  try {
+    const sql = `
+      SELECT room_type_id, room_type, room_capacity, rate_per_night
+      FROM ROOM_TYPE_DETAILS
+      ORDER BY room_type_id ASC;
+    `;
+    const rows = await queryD1(sql);
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    return rows.map((r: any) => {
+      const typeId = Number(r.room_type_id);
+      const meta = ROOM_METADATA[typeId] || {
+        image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+        badge: `Up to ${r.room_capacity} Guests`,
+        features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
+        description: 'Spacious coastal luxury suite retreat.',
+      };
+      return {
+        room_type_id: typeId,
+        room_type: r.room_type,
+        room_capacity: Number(r.room_capacity),
+        rate_per_night: Number(r.rate_per_night),
+        badge: meta.badge || `Up to ${r.room_capacity} Guests`,
+        image_url: meta.image_url,
+        description: meta.description,
+        features: meta.features,
+      };
+    });
+  } catch (err) {
+    console.warn('[Cloudflare D1 Room Types Warning]:', err);
     return [];
   }
 }

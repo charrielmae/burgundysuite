@@ -108,41 +108,81 @@ function loadStore(): any {
         room_type_id: 1,
         room_type: 'Deluxe Suite',
         room_capacity: 2,
-        rate_per_night: 18500,
+        rate_per_night: 250,
         description: 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
         image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
-        badge: 'Coastal Classic',
-        features: ['Ocean Balcony', 'King Plush Bed', 'Walk-in Rain Shower', 'Complimentary Wine'],
+        badge: 'Up to 2 Guests',
+        features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
       },
       {
         room_type_id: 2,
         room_type: 'Executive King',
         room_capacity: 3,
-        rate_per_night: 28000,
+        rate_per_night: 420,
         description: 'Designed for business and leisure, offering dedicated workspace and hydro tub.',
         image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
-        badge: 'Executive Choice',
-        features: ['Dedicated Executive Desk', 'Hydro Soak Tub', 'Espresso Bar', 'High-Speed Fiber'],
+        badge: 'Up to 3 Guests',
+        features: ['Deep Hydro Soak Tub', 'Executive Work Station', 'Dedicated High-Speed WiFi'],
       },
       {
         room_type_id: 3,
         room_type: 'Presidential Suite',
         room_capacity: 4,
-        rate_per_night: 55000,
+        rate_per_night: 750,
         description: 'Expansive private suite with personal butler, living lounge, and ocean plunge pool.',
         image_url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80',
-        badge: 'VIP Presidential',
-        features: ['24/7 Butler Service', 'Private Plunge Pool', 'Double Vanity Marble', 'Sunset Terrace'],
+        badge: 'Up to 4 Guests',
+        features: ['Private Butler Service', 'Infinity Edge Plunge Pool', 'Grand Living Salon'],
       },
       {
         room_type_id: 4,
         room_type: 'Penthouse Haven',
         room_capacity: 6,
-        rate_per_night: 95000,
+        rate_per_night: 1200,
         description: 'Top-floor 360-degree panorama, private elevator access, and helipad transfer.',
         image_url: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
-        badge: 'Ultra Luxury Peak',
-        features: ['Helipad VIP Transfer', 'Private Elevator Key', 'Panoramic 360° Glass', 'Private Chef Service'],
+        badge: 'Up to 6 Guests',
+        features: ['Direct Helipad Transfer', 'Private Elevator Keycard', '360° Glass Ocean View'],
+      },
+      {
+        room_type_id: 5,
+        room_type: 'Oceanview Sunset Villa',
+        room_capacity: 4,
+        rate_per_night: 550,
+        description: 'Secluded seaside villa with private infinity plunge pool, oceanview sunset deck, and butler service.',
+        image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+        badge: 'Up to 4 Guests',
+        features: ['Private Plunge Pool', 'Panoramic Sunset Deck', '24/7 Butler Service'],
+      },
+      {
+        room_type_id: 6,
+        room_type: 'Family Suite',
+        room_capacity: 10,
+        rate_per_night: 3200,
+        description: 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
+        image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+        badge: 'Up to 10 Guests',
+        features: ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
+      },
+      {
+        room_type_id: 7,
+        room_type: 'Royal Emerald Penthouse',
+        room_capacity: 8,
+        rate_per_night: 4500,
+        description: 'Ultra-exclusive 360-degree top-floor penthouse with private helicopter charter and infinity ocean plunge pool.',
+        image_url: '/api/media/suites/1792035835546-emerald-villa-ocean.png',
+        badge: 'Up to 8 Guests',
+        features: ['Helipad VIP Transfer', 'Private Infinity Plunge Pool', 'Personal Dedicated Butler'],
+      },
+      {
+        room_type_id: 8,
+        room_type: 'Sapphire Ocean Villa',
+        room_capacity: 4,
+        rate_per_night: 750,
+        description: 'Exclusive ocean villa with infinity plunge pool and sunset panorama.',
+        image_url: '/api/media/suites/test-suite.png',
+        badge: 'Up to 4 Guests',
+        features: ['Private Lagoon Access', 'Sunken Lounge', 'Designer King Suite'],
       },
     ],
     ROOM_DETAILS: [
@@ -365,11 +405,11 @@ export default defineEventHandler(async (event) => {
         ...r,
         room_type: type?.room_type || 'Deluxe Suite',
         room_capacity: type?.room_capacity || 2,
-        rate_per_night: type?.rate_per_night || 18500,
+        rate_per_night: type?.rate_per_night || 250,
         image_url: type?.image_url || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
-        description: type?.description || 'Spacious coastal luxury suite retreat.',
-        features: type?.features || ['Ocean Balcony', 'King Plush Bed', 'Walk-in Rain Shower'],
-        badge: type?.badge || 'Coastal Classic',
+        description: type?.description || 'Spacious coastal retreat with ocean view balcony and plush king bedding.',
+        features: type?.features || ['Balcony with Sea Breeze', 'En-suite Rain Shower', 'Artisanal Mini Bar'],
+        badge: type?.badge || 'Up to 2 Guests',
       };
     });
     return { success: true, data: rooms };
@@ -412,6 +452,15 @@ export default defineEventHandler(async (event) => {
 
   // Room Types (/api/room-types)
   if (cleanPath === '/api/room-types' && method === 'GET') {
+    try {
+      const { getRoomTypesFromD1 } = await import('../utils/d1');
+      const d1Types = await getRoomTypesFromD1();
+      if (Array.isArray(d1Types) && d1Types.length > 0) {
+        return { success: true, data: d1Types };
+      }
+    } catch (d1Err) {
+      console.warn('[D1 Room Types Fetch Warning]:', d1Err);
+    }
     return { success: true, data: db.ROOM_TYPE_DETAILS || [] };
   }
 
@@ -892,7 +941,16 @@ export default defineEventHandler(async (event) => {
     const checkOut = (query.check_out as string) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)));
 
-    const results = (db.ROOM_TYPE_DETAILS || []).map((t: any) => {
+    let roomTypesList = db.ROOM_TYPE_DETAILS || [];
+    try {
+      const { getRoomTypesFromD1 } = await import('../utils/d1');
+      const d1Types = await getRoomTypesFromD1();
+      if (Array.isArray(d1Types) && d1Types.length > 0) {
+        roomTypesList = d1Types;
+      }
+    } catch {}
+
+    const results = (roomTypesList || []).map((t: any) => {
       const typeRooms = (db.ROOM_DETAILS || []).filter((r: any) => r.room_type_id === t.room_type_id);
       const availableRooms = typeRooms.filter((r: any) => r.room_status === 'available');
       return {
