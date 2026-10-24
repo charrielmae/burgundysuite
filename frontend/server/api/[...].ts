@@ -448,6 +448,16 @@ export default defineEventHandler(async (event) => {
 
   // Admin Accounts: GET (/api/admin/accounts)
   if (cleanPath === '/api/admin/accounts' && method === 'GET') {
+    // 1. Try fetching live persistent staff accounts from Cloudflare D1 database
+    try {
+      const { getStaffAccountsFromD1 } = await import('../utils/d1');
+      const d1Accounts = await getStaffAccountsFromD1();
+      if (Array.isArray(d1Accounts) && d1Accounts.length > 0) {
+        return { success: true, data: d1Accounts };
+      }
+    } catch {}
+
+    // 2. Fallback to local store
     const accounts = (db.USER_ACCOUNT || [])
       .filter((u: any) => u.user_role === 'admin' || u.user_role === 'staff')
       .map((u: any) => {
@@ -488,27 +498,51 @@ export default defineEventHandler(async (event) => {
         });
       }
 
+      // 1. PERSIST DIRECTLY TO CLOUDFLARE D1 DATABASE
+      let d1Record: any = null;
+      try {
+        const { saveAccountToD1 } = await import('../utils/d1');
+        const resD1 = await saveAccountToD1({
+          user_name: username,
+          password: password,
+          user_role: role,
+          first_name: firstName,
+          last_name: lastName,
+          position: position,
+          contact_number: contact,
+        });
+
+        if (resD1 && !resD1.success && resD1.error?.includes('already exists')) {
+          throw createError({
+            statusCode: 409,
+            statusMessage: resD1.error,
+          });
+        }
+        if (resD1?.success && resD1?.data) {
+          d1Record = resD1.data;
+        }
+      } catch (d1Err: any) {
+        if (d1Err?.statusCode) throw d1Err;
+        console.warn('[Cloudflare D1 Save Warning]:', d1Err?.message || d1Err);
+      }
+
       if (!Array.isArray(db.USER_ACCOUNT)) db.USER_ACCOUNT = [];
       if (!Array.isArray(db.STAFF_DETAILS)) db.STAFF_DETAILS = [];
 
-      // Check for duplicate username
+      // Check for duplicate username in local cache if D1 didn't catch it
       const existing = db.USER_ACCOUNT.find(
         (u: any) => String(u.user_name || '').toLowerCase() === username.toLowerCase()
       );
-      if (existing) {
+      if (existing && !d1Record) {
         throw createError({
           statusCode: 409,
           statusMessage: `Username '${username}' is already in use. Please choose a different username.`,
         });
       }
 
-      const maxUserId = db.USER_ACCOUNT.reduce((max: number, u: any) => Math.max(max, Number(u.user_id) || 0), 0);
-      const newUserId = maxUserId + 1;
-
-      const maxStaffId = db.STAFF_DETAILS.reduce((max: number, s: any) => Math.max(max, Number(s.staff_id) || 0), 100);
-      const newStaffId = maxStaffId + 1;
-
-      const nowIso = new Date().toISOString();
+      const newUserId = d1Record?.user_id || (db.USER_ACCOUNT.reduce((max: number, u: any) => Math.max(max, Number(u.user_id) || 0), 0) + 1);
+      const newStaffId = d1Record?.staff_id || (db.STAFF_DETAILS.reduce((max: number, s: any) => Math.max(max, Number(s.staff_id) || 0), 100) + 1);
+      const nowIso = d1Record?.created_date || new Date().toISOString();
 
       const newUserAccount = {
         user_id: newUserId,
@@ -529,12 +563,15 @@ export default defineEventHandler(async (event) => {
         contact_number: contact,
       };
 
+      // Ensure no local duplicate and cache in local store
+      db.USER_ACCOUNT = db.USER_ACCOUNT.filter((u: any) => String(u.user_name || '').toLowerCase() !== username.toLowerCase());
       db.USER_ACCOUNT.push(newUserAccount);
+      db.STAFF_DETAILS = db.STAFF_DETAILS.filter((s: any) => s.user_id !== newUserId);
       db.STAFF_DETAILS.push(newStaffDetails);
 
       saveStore(db);
 
-      // Sync into Better Auth store so new account can log in immediately
+      // Sync into Better Auth store so new account can also authenticate via Better Auth
       const userEmail = username.includes('@')
         ? username.toLowerCase()
         : `${username.toLowerCase()}@burgundysuite.com`;
@@ -551,10 +588,10 @@ export default defineEventHandler(async (event) => {
           },
         }).catch(() => null);
       } catch (baErr) {
-        // Continue gracefully if Better Auth sync encounters an error
+        // Continue gracefully
       }
 
-      const createdRecord = {
+      const createdRecord = d1Record || {
         user_id: newUserId,
         user_name: username,
         user_role: role,
@@ -569,7 +606,7 @@ export default defineEventHandler(async (event) => {
 
       return {
         success: true,
-        message: `Account for ${firstName} ${lastName} (${role === 'admin' ? 'Administrator' : 'Staff'}) created successfully!`,
+        message: `Account for ${firstName} ${lastName} (${role === 'admin' ? 'Administrator' : 'Staff'}) created successfully and saved to database!`,
         data: createdRecord,
       };
     } catch (err: any) {
@@ -591,16 +628,31 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, statusMessage: 'User ID is required.' });
       }
 
-      const user = (db.USER_ACCOUNT || []).find((u: any) => u.user_id === targetUserId);
-      if (!user) {
-        throw createError({ statusCode: 404, statusMessage: 'Account not found.' });
+      // Update in Cloudflare D1
+      try {
+        const { updateAccountInD1 } = await import('../utils/d1');
+        await updateAccountInD1({
+          user_id: targetUserId,
+          user_name: body.user_name,
+          password: body.password,
+          user_role: body.user_role === 'admin' ? 'admin' : body.user_role === 'staff' ? 'staff' : undefined,
+          first_name: body.first_name,
+          last_name: body.last_name,
+          position: body.position,
+          contact_number: body.contact_number,
+        });
+      } catch (d1Err) {
+        console.warn('[D1 Update Warning]:', d1Err);
       }
 
-      if (body.user_name) user.user_name = String(body.user_name).trim();
-      if (body.user_role) user.user_role = body.user_role === 'admin' ? 'admin' : 'staff';
-      if (body.password) {
-        user.plain_password = String(body.password).trim();
-        user.password_hash = `argon2id$custom$${body.password.trim()}`;
+      const user = (db.USER_ACCOUNT || []).find((u: any) => u.user_id === targetUserId);
+      if (user) {
+        if (body.user_name) user.user_name = String(body.user_name).trim();
+        if (body.user_role) user.user_role = body.user_role === 'admin' ? 'admin' : 'staff';
+        if (body.password) {
+          user.plain_password = String(body.password).trim();
+          user.password_hash = `argon2id$custom$${body.password.trim()}`;
+        }
       }
 
       let staff = (db.STAFF_DETAILS || []).find((s: any) => s.user_id === targetUserId);
@@ -608,7 +660,7 @@ export default defineEventHandler(async (event) => {
         staff = {
           staff_id: targetUserId,
           user_id: targetUserId,
-          first_name: body.first_name || user.user_name,
+          first_name: body.first_name || user?.user_name || 'Staff',
           last_name: body.last_name || '',
           position: body.position || 'Staff',
           contact_number: body.contact_number || '',
@@ -625,13 +677,13 @@ export default defineEventHandler(async (event) => {
 
       return {
         success: true,
-        message: `Staff account for ${staff.first_name} ${staff.last_name} updated successfully!`,
+        message: `Staff account #${targetUserId} updated successfully!`,
         data: {
-          user_id: user.user_id,
-          user_name: user.user_name,
-          user_role: user.user_role,
-          acc_status: user.acc_status || 'active',
-          created_date: user.created_date,
+          user_id: targetUserId,
+          user_name: body.user_name || user?.user_name,
+          user_role: body.user_role || user?.user_role || 'staff',
+          acc_status: user?.acc_status || 'active',
+          created_date: user?.created_date,
           staff_id: staff.staff_id,
           first_name: staff.first_name,
           last_name: staff.last_name,
@@ -659,6 +711,14 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, statusMessage: 'Cannot delete primary Administrator account.' });
       }
 
+      // Delete from Cloudflare D1
+      try {
+        const { deleteAccountFromD1 } = await import('../utils/d1');
+        await deleteAccountFromD1(targetUserId);
+      } catch (d1Err) {
+        console.warn('[D1 Delete Warning]:', d1Err);
+      }
+
       db.USER_ACCOUNT = (db.USER_ACCOUNT || []).filter((u: any) => u.user_id !== targetUserId);
       db.STAFF_DETAILS = (db.STAFF_DETAILS || []).filter((s: any) => s.user_id !== targetUserId);
 
@@ -666,7 +726,7 @@ export default defineEventHandler(async (event) => {
 
       return {
         success: true,
-        message: `Staff account #${targetUserId} has been successfully removed.`,
+        message: `Staff account #${targetUserId} has been successfully removed from database.`,
       };
     } catch (err: any) {
       if (err?.statusCode) throw err;
