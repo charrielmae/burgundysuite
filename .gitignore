@@ -54,3 +54,9 @@ next-env.d.ts
 public/uploads/
 **/public/uploads/
 
+# sqlite local databases
+*.sqlite
+*.sqlite*
+*.db
+
+

@@ -37,8 +37,25 @@ npm run dev
 
 ### 4. Admin Access
 Navigate to [http://localhost:3000/admin](http://localhost:3000/admin):
-- **Username**: `admin`
-- **Password**: `admin123`
+- **Email / Username**: `admin@burgundysuite.com` (or `admin_clara`)
+- **Password**: `admin123password` (or `admin123`)
+
+---
+
+## Better Auth & Better Auth Infra (Dash + Sentinel)
+
+The application integrates **Better Auth** with `@better-auth/infra`:
+- **Server Plugin**: `dash()` for telemetry, audit logs, and dashboard management APIs.
+- **Client Plugin**: `sentinelClient()` for device fingerprinting, Proof-of-Work (PoW) auto-solving, and bot protection.
+- **Server Handler**: `frontend/server/api/auth/[...all].ts` (routed at `/api/auth/*`).
+- **Client Instance**: `frontend/lib/auth-client.ts` (`authClient`).
+
+### Exposing to Better Auth Dash via Ngrok
+To connect your local instance to the Better Auth Infra cloud dashboard:
+```bash
+npx ngrok http 3000
+```
+Then configure your public ngrok URL as the application URL in your Better Auth project dashboard.
 
 ---
 

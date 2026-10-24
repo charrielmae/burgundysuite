@@ -20,7 +20,7 @@
         <span>Return to Guest Haven</span>
       </NuxtLink>
       <span class="text-[11px] text-[#E5C378]/60 tracking-widest uppercase font-semibold">
-        Admin System
+        Admin Portal
       </span>
     </div>
 
@@ -36,42 +36,22 @@
           />
         </div>
         <div>
-          <div class="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.25em] text-[#E5C378] uppercase">
-            <ShieldCheck class="w-3.5 h-3.5" />
-            <span>Executive Management</span>
-          </div>
-          <h2 class="font-serif text-2xl font-bold text-white tracking-wide mt-1">
-            Admin Portal Login
+          <h2 class="font-serif text-2xl font-bold text-white tracking-wide">
+            Admin Login
           </h2>
-          <p class="text-xs text-white/60 mt-1">
-            Please enter your authorized management credentials to proceed.
-          </p>
-        </div>
-      </div>
-
-      <!-- Guest Notice -->
-      <div class="my-5 p-3.5 rounded-2xl bg-[#240A10] border border-[#5A1C2A] flex items-start gap-2.5 text-xs text-white/80">
-        <Info class="w-4 h-4 text-[#E5C378] shrink-0 mt-0.5" />
-        <div class="text-[11px] leading-relaxed">
-          <span class="font-semibold text-[#E5C378]">Looking for your room booking? </span>
-          Guests do not have passwords. Use the
-          <NuxtLink to="/#suites" class="underline font-semibold text-[#E5C378] hover:text-white">
-            Verify Booking
-          </NuxtLink>
-          button on the guest homepage with your Gmail.
         </div>
       </div>
 
       <!-- Error notification -->
-      <div v-if="error" class="mb-5 p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-300 text-xs font-medium">
+      <div v-if="error" class="my-5 p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-300 text-xs font-medium">
         {{ error }}
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <form @submit.prevent="handleSubmit" class="space-y-4 pt-5">
         <div>
           <label class="block text-[11px] font-bold tracking-widest uppercase text-white/70 mb-1.5">
-            Admin / Staff Username
+            Email or Username
           </label>
           <div class="relative">
             <User class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5C378]/70" />
@@ -79,7 +59,7 @@
               type="text"
               required
               v-model="username"
-              placeholder="e.g. admin_clara"
+              placeholder="e.g. admin@burgundysuite.com"
               class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#240A10] border border-[#5A1C2A] text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-[#E5C378] transition-colors"
             />
           </div>
@@ -87,7 +67,7 @@
 
         <div>
           <label class="block text-[11px] font-bold tracking-widest uppercase text-white/70 mb-1.5">
-            Secret Password
+            Password
           </label>
           <div class="relative">
             <Lock class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5C378]/70" />
@@ -106,21 +86,21 @@
           :disabled="loading"
           class="w-full mt-2 py-3 rounded-xl bg-[#5A1C2A] hover:bg-[#6D2233] text-[#E5C378] border border-[#E5C378]/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
         >
-          <span v-if="loading">Authenticating Executive...</span>
+          <span v-if="loading">Signing in...</span>
           <template v-else>
             <KeyRound class="w-4 h-4" />
-            <span>Enter Admin Portal</span>
+            <span>Sign In</span>
             <ArrowRight class="w-4 h-4" />
           </template>
         </button>
 
         <!-- Quick Demo Credentials Helper -->
-        <div class="pt-3 border-t border-[#5A1C2A]/60 flex items-center justify-between text-[11px] text-white/50">
-          <span>Need Demo Access?</span>
+        <div class="pt-4 border-t border-[#5A1C2A]/60 flex items-center justify-between text-xs text-white/50">
+          <span>Need demo access?</span>
           <button
             type="button"
             @click="fillDemoCredentials"
-            class="text-[#E5C378] hover:text-[#D4AF37] underline cursor-pointer"
+            class="text-[#E5C378] hover:text-[#D4AF37] underline cursor-pointer font-medium transition-colors"
           >
             Autofill Demo Login
           </button>
@@ -133,11 +113,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import {
-  ShieldCheck,
   Lock,
   User,
   ArrowRight,
-  Info,
   ArrowLeft,
   KeyRound,
 } from 'lucide-vue-next';
@@ -154,8 +132,8 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 
 const fillDemoCredentials = () => {
-  username.value = 'admin_clara';
-  password.value = 'admin123';
+  username.value = 'admin@burgundysuite.com';
+  password.value = 'admin123password';
   error.value = null;
 };
 

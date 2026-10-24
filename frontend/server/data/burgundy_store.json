@@ -183,6 +183,33 @@
       "user_role": "guest",
       "acc_status": "active",
       "created_date": "2026-10-20T08:31:15.874Z"
+    },
+    {
+      "user_id": 24,
+      "user_name": "staff_marcus",
+      "password_hash": "argon2id$custom$marcus123password",
+      "plain_password": "marcus123password",
+      "user_role": "staff",
+      "acc_status": "active",
+      "created_date": "2026-10-24T10:09:32.630Z"
+    },
+    {
+      "user_id": 25,
+      "user_name": "concierge_elena",
+      "password_hash": "argon2id$custom$elena2026password",
+      "plain_password": "elena2026password",
+      "user_role": "staff",
+      "acc_status": "active",
+      "created_date": "2026-10-24T10:10:19.383Z"
+    },
+    {
+      "user_id": 26,
+      "user_name": "jojo",
+      "password_hash": "argon2id$custom$jojo",
+      "plain_password": "jojo",
+      "user_role": "admin",
+      "acc_status": "active",
+      "created_date": "2026-10-24T10:11:48.328Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -241,6 +268,30 @@
       "last_name": "Diaz",
       "position": "Chief Executive Sommelier",
       "contact_number": "+63 920 123 9988"
+    },
+    {
+      "staff_id": 108,
+      "user_id": 24,
+      "first_name": "Marcus",
+      "last_name": "Aurelius",
+      "position": "Resort Concierge",
+      "contact_number": "+63 917 555 7788"
+    },
+    {
+      "staff_id": 109,
+      "user_id": 25,
+      "first_name": "Elena",
+      "last_name": "Rostova",
+      "position": "Lead VIP Concierge",
+      "contact_number": "+63 917 555 4321"
+    },
+    {
+      "staff_id": 110,
+      "user_id": 26,
+      "first_name": "Jonathan",
+      "last_name": "Joestar",
+      "position": "Admin",
+      "contact_number": "+639102794535"
     }
   ],
   "GUEST_DETAILS": [

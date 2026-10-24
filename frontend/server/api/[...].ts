@@ -534,6 +534,26 @@ export default defineEventHandler(async (event) => {
 
       saveStore(db);
 
+      // Sync into Better Auth store so new account can log in immediately
+      const userEmail = username.includes('@')
+        ? username.toLowerCase()
+        : `${username.toLowerCase()}@burgundysuite.com`;
+
+      try {
+        const { auth } = await import('../utils/auth');
+        await auth.api.signUpEmail({
+          body: {
+            email: userEmail,
+            password: password,
+            name: `${firstName} ${lastName}`.trim(),
+            role: role,
+            position: position,
+          },
+        }).catch(() => null);
+      } catch (baErr) {
+        // Continue gracefully if Better Auth sync encounters an error
+      }
+
       const createdRecord = {
         user_id: newUserId,
         user_name: username,
