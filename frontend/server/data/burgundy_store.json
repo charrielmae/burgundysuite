@@ -201,6 +201,15 @@
       "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-10-24T10:11:48.328Z"
+    },
+    {
+      "user_id": 24,
+      "user_name": "charriel_ayuban",
+      "password_hash": "argon2id$custom$charriel_ayuban",
+      "plain_password": "charriel_ayuban",
+      "user_role": "admin",
+      "acc_status": "active",
+      "created_date": "2026-10-24T11:38:53.577Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -275,6 +284,14 @@
       "last_name": "Joestar",
       "position": "Admin",
       "contact_number": "+639102794535"
+    },
+    {
+      "staff_id": 107,
+      "user_id": 24,
+      "first_name": "Charriel Mae",
+      "last_name": "Ayuban",
+      "position": "Admin",
+      "contact_number": "09664815395"
     }
   ],
   "GUEST_DETAILS": [
