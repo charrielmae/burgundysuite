@@ -606,7 +606,7 @@
       "room_type_id": 1,
       "room_number": 101,
       "floor_number": 1,
-      "room_status": "occupied"
+      "room_status": "available"
     },
     {
       "room_id": 2,
@@ -666,6 +666,51 @@
     }
   ],
   "ROOM_BOOKING": [
+    {
+      "booking_id": 1014,
+      "user_id": 25,
+      "room_id": 1,
+      "booking_date": "2026-10-24",
+      "check_in_date": "2026-11-01",
+      "check_out_date": "2026-11-04",
+      "total_amount": 55500,
+      "booking_status": "completed",
+      "guest": {
+        "user_id": 25,
+        "first_name": "Isabella",
+        "last_name": "Rossi",
+        "email_address": "isabella.rossi@example.com",
+        "contact_number": "+63 917 888 4321",
+        "birth_date": "1995-04-12",
+        "nationality": "Italian",
+        "civil_status": "Single",
+        "address": "Venice, Italy"
+      },
+      "room": {
+        "room_id": 1,
+        "room_type_id": 1,
+        "room_number": 101,
+        "floor_number": 1,
+        "room_status": "occupied"
+      },
+      "room_type": {
+        "room_type_id": 1,
+        "room_type": "Deluxe Suite",
+        "room_capacity": 2,
+        "rate_per_night": 250,
+        "image_url": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80",
+        "badge": "Coastal Classic",
+        "description": "Spacious coastal retreat with ocean view balcony and plush king bedding."
+      },
+      "payment": {
+        "payment_id": 518,
+        "booking_id": 1014,
+        "payment_method": "Credit Card (Mastercard)",
+        "amount": 55500,
+        "payment_status": "paid",
+        "payment_date": "2026-10-24T15:44:52.419Z"
+      }
+    },
     {
       "booking_id": 1001,
       "user_id": 4,

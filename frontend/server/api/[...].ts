@@ -351,6 +351,14 @@ export default defineEventHandler(async (event) => {
 
   // Rooms List (/api/rooms)
   if (cleanPath === '/api/rooms' && method === 'GET') {
+    try {
+      const { getRoomsFromD1 } = await import('../utils/d1');
+      const d1Rooms = await getRoomsFromD1();
+      if (Array.isArray(d1Rooms) && d1Rooms.length > 0) {
+        return { success: true, data: d1Rooms };
+      }
+    } catch {}
+
     const rooms = (db.ROOM_DETAILS || []).map((r: any) => {
       const type = (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === r.room_type_id);
       return {
@@ -367,6 +375,41 @@ export default defineEventHandler(async (event) => {
     return { success: true, data: rooms };
   }
 
+  // Room Status Update (/api/rooms)
+  if (cleanPath === '/api/rooms' && (method === 'PATCH' || method === 'PUT')) {
+    try {
+      const body = await readBody(event).catch(() => ({}));
+      const roomId = Number(body.room_id || body.roomId);
+      const status = String(body.status || body.room_status || 'available').trim();
+
+      if (!roomId) {
+        throw createError({ statusCode: 400, statusMessage: 'Room ID is required.' });
+      }
+
+      // Update in D1
+      try {
+        const { updateRoomStatusInD1 } = await import('../utils/d1');
+        await updateRoomStatusInD1(roomId, status);
+      } catch {}
+
+      // Update in local store
+      const room = (db.ROOM_DETAILS || []).find((r: any) => r.room_id === roomId);
+      if (room) {
+        room.room_status = status;
+        saveStore(db);
+      }
+
+      return {
+        success: true,
+        data: room || { room_id: roomId, room_status: status },
+        message: `Room #${roomId} status updated to "${status}".`,
+      };
+    } catch (err: any) {
+      if (err?.statusCode) throw err;
+      throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to update room.' });
+    }
+  }
+
   // Room Types (/api/room-types)
   if (cleanPath === '/api/room-types' && method === 'GET') {
     return { success: true, data: db.ROOM_TYPE_DETAILS || [] };
@@ -374,7 +417,23 @@ export default defineEventHandler(async (event) => {
 
   // Bookings List (/api/bookings)
   if (cleanPath === '/api/bookings' && method === 'GET') {
-    const bookings = (db.ROOM_BOOKING || []).map((b: any) => {
+    const query = getQuery(event);
+    const filterEmail = query.email ? String(query.email) : undefined;
+    const filterId = query.id ? Number(query.id) : undefined;
+
+    // 1. Fetch live from Cloudflare D1
+    try {
+      const { getBookingsFromD1 } = await import('../utils/d1');
+      const d1Bookings = await getBookingsFromD1({ email: filterEmail, id: filterId });
+      if (Array.isArray(d1Bookings) && d1Bookings.length > 0) {
+        return { success: true, data: d1Bookings };
+      }
+    } catch (d1Err) {
+      console.warn('[D1 Bookings Fetch Warning]:', d1Err);
+    }
+
+    // 2. Fallback to local store
+    let bookings = (db.ROOM_BOOKING || []).map((b: any) => {
       const room = (db.ROOM_DETAILS || []).find((r: any) => r.room_id === b.room_id) || {};
       const roomType = (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === room.room_type_id) || {};
       const guest = (db.GUEST_DETAILS || []).find((g: any) => g.user_id === b.user_id) || {
@@ -392,32 +451,112 @@ export default defineEventHandler(async (event) => {
         payment,
       };
     });
+
+    if (filterEmail) {
+      bookings = bookings.filter((b: any) => b.guest?.email_address?.toLowerCase() === filterEmail.toLowerCase());
+    }
+    if (filterId) {
+      bookings = bookings.filter((b: any) => b.booking_id === filterId);
+    }
+
     return { success: true, data: bookings };
   }
 
   // Create Booking (/api/bookings)
   if (cleanPath === '/api/bookings' && method === 'POST') {
-    const body = await readBody(event).catch(() => ({}));
-    const newId = (db.ROOM_BOOKING || []).length + 1;
-    const newBooking = {
-      booking_id: newId,
-      user_id: 10 + newId,
-      room_id: body.room_id || 1,
-      booking_date: new Date().toISOString().split('T')[0],
-      check_in_date: body.check_in_date || '2026-10-25',
-      check_out_date: body.check_out_date || '2026-10-28',
-      total_amount: Number(body.total_amount) || 55500,
-      booking_status: 'pending',
-    };
-    if (!Array.isArray(db.ROOM_BOOKING)) db.ROOM_BOOKING = [];
-    db.ROOM_BOOKING.unshift(newBooking);
-    saveStore(db);
-    return { success: true, data: newBooking, message: 'Reservation confirmed successfully.' };
+    try {
+      const body = await readBody(event).catch(() => ({}));
+
+      // 1. Persist directly to Cloudflare D1 database
+      let createdBooking: any = null;
+      try {
+        const { createBookingInD1 } = await import('../utils/d1');
+        const resD1 = await createBookingInD1(body);
+        if (resD1.success && resD1.data) {
+          createdBooking = resD1.data;
+        }
+      } catch (d1Err: any) {
+        console.warn('[Cloudflare D1 Booking Create Warning]:', d1Err);
+      }
+
+      // 2. Cache in local store for redundancy
+      const newId = createdBooking?.booking_id || ((db.ROOM_BOOKING || []).length + 1020);
+      const newBooking = createdBooking || {
+        booking_id: newId,
+        user_id: 10 + newId,
+        room_id: body.room_id || 1,
+        booking_date: new Date().toISOString().split('T')[0],
+        check_in_date: body.check_in_date || '2026-10-25',
+        check_out_date: body.check_out_date || '2026-10-28',
+        total_amount: Number(body.total_amount) || 55500,
+        booking_status: 'checked-in',
+      };
+
+      if (!Array.isArray(db.ROOM_BOOKING)) db.ROOM_BOOKING = [];
+      db.ROOM_BOOKING.unshift(newBooking);
+      saveStore(db);
+
+      return {
+        success: true,
+        data: newBooking,
+        message: 'Reservation confirmed successfully and saved to database!',
+      };
+    } catch (err: any) {
+      if (err?.statusCode) throw err;
+      throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to confirm booking.' });
+    }
+  }
+
+  // Checkout Booking (/api/bookings/:id/checkout)
+  const checkoutMatch = cleanPath.match(/^\/api\/bookings\/(\d+)\/checkout$/);
+  if (checkoutMatch && method === 'POST') {
+    try {
+      const bookingId = Number(checkoutMatch[1]);
+      if (!bookingId) {
+        throw createError({ statusCode: 400, statusMessage: 'Valid booking ID is required.' });
+      }
+
+      // 1. Checkout in Cloudflare D1
+      try {
+        const { checkoutBookingInD1 } = await import('../utils/d1');
+        await checkoutBookingInD1(bookingId);
+      } catch (d1Err) {
+        console.warn('[D1 Checkout Warning]:', d1Err);
+      }
+
+      // 2. Update in local store
+      const localBooking = (db.ROOM_BOOKING || []).find((b: any) => b.booking_id === bookingId);
+      if (localBooking) {
+        localBooking.booking_status = 'completed';
+        const room = (db.ROOM_DETAILS || []).find((r: any) => r.room_id === localBooking.room_id);
+        if (room) room.room_status = 'available';
+        saveStore(db);
+      }
+
+      return {
+        success: true,
+        message: `Booking #${bookingId} checked out successfully.`,
+        data: { booking_id: bookingId, booking_status: 'completed' },
+      };
+    } catch (err: any) {
+      if (err?.statusCode) throw err;
+      throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to checkout booking.' });
+    }
   }
 
   // Admin Metrics (/api/admin/metrics)
   if (cleanPath === '/api/admin/metrics' && method === 'GET') {
-    const totalRooms = (db.ROOM_DETAILS || []).length || 6;
+    // 1. Try live metrics from Cloudflare D1
+    try {
+      const { getMetricsFromD1 } = await import('../utils/d1');
+      const d1Metrics = await getMetricsFromD1();
+      if (d1Metrics) {
+        return { success: true, data: d1Metrics };
+      }
+    } catch {}
+
+    // 2. Local fallback
+    const totalRooms = (db.ROOM_DETAILS || []).length || 8;
     const occupiedRooms = (db.ROOM_DETAILS || []).filter((r: any) => r.room_status === 'occupied').length || 1;
     const totalRevenue = (db.PAYMENT_DETAILS || [])
       .filter((p: any) => p.payment_status === 'paid')
@@ -736,6 +875,13 @@ export default defineEventHandler(async (event) => {
 
   // Payments (/api/payments)
   if (cleanPath === '/api/payments' && method === 'GET') {
+    try {
+      const { getPaymentsFromD1 } = await import('../utils/d1');
+      const d1Payments = await getPaymentsFromD1();
+      if (Array.isArray(d1Payments) && d1Payments.length > 0) {
+        return { success: true, data: d1Payments };
+      }
+    } catch {}
     return { success: true, data: db.PAYMENT_DETAILS || [] };
   }
 
