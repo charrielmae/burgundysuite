@@ -12,17 +12,19 @@
       "user_id": 2,
       "user_name": "staff_vincent",
       "password_hash": "argon2id$v=19$m=65536,t=3,p=4$secret_staff_hash",
-      "user_role": "admin",
+      "user_role": "staff",
       "acc_status": "active",
-      "created_date": "2026-09-05T09:30:00Z"
+      "created_date": "2026-09-05T09:30:00Z",
+      "role_id": 2
     },
     {
       "user_id": 3,
       "user_name": "staff_helena",
       "password_hash": "argon2id$v=19$m=65536,t=3,p=4$secret_staff_hash",
-      "user_role": "admin",
+      "user_role": "staff",
       "acc_status": "active",
-      "created_date": "2026-09-10T11:15:00Z"
+      "created_date": "2026-09-10T11:15:00Z",
+      "role_id": 2
     },
     {
       "user_id": 4,
@@ -637,7 +639,7 @@
       "room_type_id": 3,
       "room_number": 201,
       "floor_number": 2,
-      "room_status": "occupied"
+      "room_status": "available"
     },
     {
       "room_id": 4,
@@ -691,7 +693,7 @@
       "check_in_date": "2026-11-27",
       "check_out_date": "2026-11-30",
       "total_amount": 2250,
-      "booking_status": "checked-in",
+      "booking_status": "completed",
       "guest": {
         "user_id": 35,
         "first_name": "Haymitch",

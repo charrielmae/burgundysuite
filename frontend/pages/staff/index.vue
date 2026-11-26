@@ -65,6 +65,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useApi } from '../../composables/useApi';
+import { usePresence } from '../../composables/usePresence';
 
 import StaffLoginGate from '../../components/staff/StaffLoginGate.vue';
 import StaffHeader from '../../components/staff/StaffHeader.vue';
@@ -74,6 +75,7 @@ import ReviewsPanel from '../../components/shared/ReviewsPanel.vue';
 
 const { adminUser, isAuthenticated, isLoading, fetchSession, logout } = useAuth();
 const { request } = useApi();
+const { startPresence, stopPresence } = usePresence();
 
 const rooms = ref<any[]>([]);
 const bookings = ref<any[]>([]);
@@ -85,16 +87,16 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const loadStaffData = async () => {
   try {
-    const [roomRes, bookingRes, reviewRes] = await Promise.all([
+    const [roomRes, bookingRes, reviewRes] = await Promise.allSettled([
       request<{ success: boolean; data: any[] }>('/api/rooms'),
       request<{ success: boolean; data: any[] }>('/api/bookings'),
       request<{ success: boolean; data: any[]; summary: any }>('/api/reviews'),
     ]);
-    if (roomRes.success) rooms.value = roomRes.data;
-    if (bookingRes.success) bookings.value = bookingRes.data;
-    if (reviewRes.success) {
-      reviews.value = reviewRes.data || [];
-      reviewSummary.value = reviewRes.summary || {};
+    if (roomRes.status === 'fulfilled' && roomRes.value.success) rooms.value = roomRes.value.data;
+    if (bookingRes.status === 'fulfilled' && bookingRes.value.success) bookings.value = bookingRes.value.data;
+    if (reviewRes.status === 'fulfilled' && reviewRes.value.success) {
+      reviews.value = reviewRes.value.data || [];
+      reviewSummary.value = reviewRes.value.summary || {};
     }
   } catch (err) {
     console.error('Error fetching staff operations data:', err);
@@ -110,6 +112,7 @@ const handleVisibility = () => {
 onMounted(async () => {
   await fetchSession('staff');
   if (isAuthenticated.value && adminUser.value?.user_role === 'staff') {
+    startPresence(adminUser.value);
     await loadStaffData();
   }
   pollTimer = setInterval(() => {
@@ -122,15 +125,20 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (pollTimer) clearInterval(pollTimer);
+  stopPresence(true);
   document.removeEventListener('visibilitychange', handleVisibility);
 });
 
 const handleLoginSuccess = async () => {
+  if (adminUser.value) {
+    startPresence(adminUser.value);
+  }
   await loadStaffData();
 };
 
 const handleLogout = async () => {
-  await logout();
+  stopPresence(true);
+  await logout('staff');
 };
 
 const handleRoomStatusChange = async (roomId: number, status: string) => {

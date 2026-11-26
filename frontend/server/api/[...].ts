@@ -1183,6 +1183,262 @@ export default defineEventHandler(async (event) => {
     return { success: true, message: 'Response posted successfully.', data: target };
   }
 
+  // Presence: Heartbeat (/api/presence/heartbeat)
+  if (cleanPath === '/api/presence/heartbeat' && method === 'POST') {
+    const body = await readBody(event).catch(() => ({}));
+    const userId = Number(body.user_id);
+    if (!userId) {
+      throw createError({ statusCode: 400, statusMessage: 'user_id is required.' });
+    }
+    const { recordHeartbeat } = await import('../utils/presence');
+    const result = await recordHeartbeat({
+      user_id: userId,
+      user_name: body.user_name,
+      user_role: body.user_role === 'admin' ? 'admin' : 'staff',
+    });
+    return { success: true, data: result };
+  }
+
+  // Presence: Offline (/api/presence/offline)
+  if (cleanPath === '/api/presence/offline' && method === 'POST') {
+    const body = await readBody(event).catch(() => ({}));
+    const userId = Number(body.user_id);
+    if (userId) {
+      const { recordOffline } = await import('../utils/presence');
+      await recordOffline(userId);
+    }
+    return { success: true };
+  }
+
+  // Presence: Real-time SSE Stream (/api/presence/stream) — ADMIN ONLY
+  if (cleanPath === '/api/presence/stream' && method === 'GET') {
+    const query = getQuery(event);
+    const queryToken = typeof query.token === 'string' ? query.token.trim() : undefined;
+    const authHeader = getHeader(event, 'authorization');
+    const bearerToken =
+      authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : undefined;
+    const customToken = getHeader(event, 'x-admin-token')?.trim();
+    const cookieToken = getCookie(event, SESSION_COOKIE_NAME);
+    const token = queryToken || bearerToken || customToken || cookieToken;
+
+    let role: string | null = null;
+    if (token) {
+      const hmacPayload = verifySessionToken(token);
+      if (hmacPayload) {
+        role = hmacPayload.role;
+      } else if (token === 'burgundy_master_session_token') {
+        role = 'admin';
+      } else if (token.startsWith('burgundy_session_')) {
+        const uid = Number(token.replace('burgundy_session_', ''));
+        const u = (db.USER_ACCOUNT || []).find((acc: any) => Number(acc.user_id) === uid);
+        if (u) {
+          role = u.user_role;
+        } else if (uid) {
+          try {
+            const { queryD1 } = await import('../utils/d1');
+            const rows = await queryD1<{ user_role: string }>(
+              'SELECT user_role FROM USER_ACCOUNT WHERE user_id = ? LIMIT 1;',
+              [uid]
+            );
+            if (rows.length > 0) role = rows[0].user_role;
+          } catch {}
+        }
+      }
+    }
+
+    if (!role) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized. Admin session required.' });
+    }
+    if (role !== 'admin') {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden. Only administrators can view team presence.' });
+    }
+
+    const res = event.node.res;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    const { getPresenceStatus, presenceEvents } = await import('../utils/presence');
+
+    const buildMembers = async () => {
+      let accounts: any[] = [];
+      try {
+        const { getStaffAccountsFromD1 } = await import('../utils/d1');
+        const d1Accounts = await getStaffAccountsFromD1();
+        if (Array.isArray(d1Accounts) && d1Accounts.length > 0) {
+          accounts = d1Accounts;
+        }
+      } catch {}
+
+      if (accounts.length === 0) {
+        accounts = (db.USER_ACCOUNT || [])
+          .filter((u: any) => u.user_role === 'admin' || u.user_role === 'staff')
+          .map((u: any) => {
+            const staff = (db.STAFF_DETAILS || []).find((s: any) => s.user_id === u.user_id);
+            return {
+              user_id: u.user_id,
+              user_name: u.user_name,
+              user_role: u.user_role,
+              acc_status: u.acc_status || 'active',
+              first_name: staff?.first_name || u.user_name,
+              last_name: staff?.last_name || '',
+              position: staff?.position || (u.user_role === 'admin' ? 'Administrator' : 'Staff'),
+              contact_number: staff?.contact_number || '',
+            };
+          });
+      }
+
+      const { source, presence } = await getPresenceStatus();
+      const members = accounts.map((acc: any) => {
+        const p = presence[acc.user_id];
+        return {
+          ...acc,
+          is_online: Boolean(p?.is_online),
+          last_seen: p?.last_seen || null,
+        };
+      });
+      return { source, members };
+    };
+
+    const pushSnapshot = async () => {
+      try {
+        const snapshot = await buildMembers();
+        res.write(`data: ${JSON.stringify(snapshot)}\n\n`);
+      } catch {}
+    };
+
+    await pushSnapshot();
+    const onChange = () => {
+      void pushSnapshot();
+    };
+    presenceEvents.on('change', onChange);
+
+    const keepAlive = setInterval(() => {
+      try {
+        res.write(': keepalive\n\n');
+      } catch {}
+    }, 15000);
+
+    await new Promise<void>((resolve) => {
+      event.node.req.on('close', () => {
+        clearInterval(keepAlive);
+        presenceEvents.off('change', onChange);
+        resolve();
+      });
+    });
+    return;
+  }
+
+  // Presence: List all Admin & Staff with Online/Offline status (/api/presence) — ADMIN ONLY
+  if (cleanPath === '/api/presence' && method === 'GET') {
+    const authHeader = getHeader(event, 'authorization');
+    const bearerToken =
+      authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+    const headerToken = bearerToken || getHeader(event, 'x-admin-token')?.trim() || '';
+    const cookieToken = getCookie(event, SESSION_COOKIE_NAME) || '';
+
+    const candidateTokens = headerToken ? [headerToken] : cookieToken ? [cookieToken] : [];
+
+    let role: string | null = null;
+    for (const token of candidateTokens) {
+      const hmacPayload = verifySessionToken(token);
+      if (hmacPayload) {
+        role = hmacPayload.role;
+      } else if (token === 'burgundy_master_session_token') {
+        role = 'admin';
+      } else if (token.startsWith('burgundy_session_')) {
+        const uid = Number(token.replace('burgundy_session_', ''));
+        const u = (db.USER_ACCOUNT || []).find((acc: any) => Number(acc.user_id) === uid);
+        if (u) {
+          role = u.user_role;
+        } else if (uid) {
+          try {
+            const { queryD1 } = await import('../utils/d1');
+            const rows = await queryD1<{ user_role: string }>(
+              'SELECT user_role FROM USER_ACCOUNT WHERE user_id = ? LIMIT 1;',
+              [uid]
+            );
+            if (rows.length > 0) role = rows[0].user_role;
+          } catch {}
+        }
+      } else {
+        try {
+          const { memoryStore } = await import('../utils/auth');
+          const memSession = (memoryStore.session || []).find((s: any) => s.token === token);
+          if (memSession && (!memSession.expiresAt || new Date(memSession.expiresAt).getTime() > Date.now())) {
+            const memUser = (memoryStore.user || []).find((u: any) => u.id === memSession.userId);
+            if (memUser) {
+              role = memUser.role || 'admin';
+            }
+          }
+        } catch {}
+      }
+      if (role) break;
+    }
+
+    if (!role && !headerToken) {
+      try {
+        const { auth } = await import('../utils/auth');
+        const { toWebRequest } = await import('h3');
+        const baSession = await auth.api.getSession({
+          headers: toWebRequest(event).headers,
+        });
+        if (baSession?.user) {
+          role = (baSession.user as any).role || 'admin';
+        }
+      } catch {}
+    }
+
+    if (!role) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized. Admin session required.' });
+    }
+    if (role !== 'admin') {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden. Only administrators can view team presence.' });
+    }
+
+    let accounts: any[] = [];
+    try {
+      const { getStaffAccountsFromD1 } = await import('../utils/d1');
+      const d1Accounts = await getStaffAccountsFromD1();
+      if (Array.isArray(d1Accounts) && d1Accounts.length > 0) {
+        accounts = d1Accounts;
+      }
+    } catch {}
+
+    if (accounts.length === 0) {
+      accounts = (db.USER_ACCOUNT || [])
+        .filter((u: any) => u.user_role === 'admin' || u.user_role === 'staff')
+        .map((u: any) => {
+          const staff = (db.STAFF_DETAILS || []).find((s: any) => s.user_id === u.user_id);
+          return {
+            user_id: u.user_id,
+            user_name: u.user_name,
+            user_role: u.user_role,
+            acc_status: u.acc_status || 'active',
+            first_name: staff?.first_name || u.user_name,
+            last_name: staff?.last_name || '',
+            position: staff?.position || (u.user_role === 'admin' ? 'Administrator' : 'Staff'),
+            contact_number: staff?.contact_number || '',
+          };
+        });
+    }
+
+    const { getPresenceStatus } = await import('../utils/presence');
+    const { source, presence } = await getPresenceStatus();
+
+    const members = accounts.map((acc: any) => {
+      const p = presence[acc.user_id];
+      return {
+        ...acc,
+        is_online: Boolean(p?.is_online),
+        last_seen: p?.last_seen || null,
+      };
+    });
+
+    return { success: true, source, data: members };
+  }
+
   // Room Availability (/api/rooms/availability)
   if (cleanPath === '/api/rooms/availability' && method === 'GET') {
     const query = getQuery(event);

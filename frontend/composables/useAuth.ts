@@ -40,7 +40,9 @@ export function useAuth() {
             if (!expectedRole || parsed?.user_role === expectedRole) {
               adminUser.value = parsed;
               isAuthenticated.value = true;
-              localStorage.setItem('burgundy_admin_token', cachedToken);
+              if (expectedRole !== 'staff') {
+                localStorage.setItem('burgundy_admin_token', cachedToken);
+              }
             } else {
               adminUser.value = null;
               isAuthenticated.value = false;
@@ -71,7 +73,9 @@ export function useAuth() {
         if (typeof window !== 'undefined') {
           if (res.token) {
             localStorage.setItem(tokenKey, res.token);
-            localStorage.setItem('burgundy_admin_token', res.token);
+            if (expectedRole !== 'staff') {
+              localStorage.setItem('burgundy_admin_token', res.token);
+            }
           }
           localStorage.setItem(userKey, JSON.stringify(res.data));
         }
@@ -88,13 +92,13 @@ export function useAuth() {
             return;
           }
           const mappedUser: AdminUser = {
-            user_id: 1,
+            user_id: adminUser.value?.user_id || 1,
             user_name: u.name || u.email?.split('@')[0] || 'admin',
             user_role: role,
             first_name: u.name?.split(' ')[0] || 'Executive',
             last_name: u.name?.split(' ').slice(1).join(' ') || 'Admin',
             position: u.position || 'General Manager',
-            contact_number: '+63 917 555 8822',
+            contact_number: adminUser.value?.contact_number || '+63 917 555 8822',
             email: u.email,
           };
           adminUser.value = mappedUser;
@@ -103,17 +107,26 @@ export function useAuth() {
             localStorage.setItem(userKey, JSON.stringify(mappedUser));
             if (baSession.data.session?.token) {
               localStorage.setItem(tokenKey, baSession.data.session.token);
-              localStorage.setItem('burgundy_admin_token', baSession.data.session.token);
+              if (expectedRole !== 'staff') {
+                localStorage.setItem('burgundy_admin_token', baSession.data.session.token);
+              }
             }
           }
           return;
         }
       } catch {}
 
-      if (typeof window !== 'undefined' && !localStorage.getItem(tokenKey)) {
-        adminUser.value = null;
-        isAuthenticated.value = false;
+      // Server explicitly confirmed the token/session is not authenticated
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(userKey);
+        if (expectedRole !== 'staff') {
+          localStorage.removeItem('burgundy_admin_token');
+          localStorage.removeItem('burgundy_admin_user');
+        }
       }
+      adminUser.value = null;
+      isAuthenticated.value = false;
     } catch {
       if (typeof window !== 'undefined' && !localStorage.getItem(tokenKey)) {
         adminUser.value = null;
@@ -148,7 +161,9 @@ export function useAuth() {
         if (typeof window !== 'undefined') {
           if (res.token) {
             localStorage.setItem(tokenKey, res.token);
-            localStorage.setItem('burgundy_admin_token', res.token);
+            if (portal !== 'staff') {
+              localStorage.setItem('burgundy_admin_token', res.token);
+            }
           }
           localStorage.setItem(userKey, JSON.stringify(res.data));
         }
@@ -178,8 +193,10 @@ export function useAuth() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(tokenKey);
         localStorage.removeItem(userKey);
-        localStorage.removeItem('burgundy_admin_token');
-        localStorage.removeItem('burgundy_admin_user');
+        if (scope === 'admin') {
+          localStorage.removeItem('burgundy_admin_token');
+          localStorage.removeItem('burgundy_admin_user');
+        }
       }
       adminUser.value = null;
       isAuthenticated.value = false;

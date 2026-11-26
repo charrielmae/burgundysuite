@@ -88,10 +88,19 @@
               class="p-4 rounded-2xl bg-[#381018] border border-[#5A1C2A] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div class="flex items-center gap-3">
-                <div
-                  class="w-10 h-10 rounded-full bg-[#240A10] border border-[#5A1C2A] text-[#E5C378] font-bold flex items-center justify-center text-sm shrink-0"
-                >
-                  {{ acc.first_name[0] }}
+                <div class="relative shrink-0">
+                  <div
+                    class="w-10 h-10 rounded-full bg-[#240A10] border border-[#5A1C2A] text-[#E5C378] font-bold flex items-center justify-center text-sm"
+                  >
+                    {{ acc.first_name[0] }}
+                  </div>
+                  <span
+                    :title="acc.is_online ? 'Online' : 'Offline'"
+                    :class="[
+                      'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#381018]',
+                      acc.is_online ? 'bg-emerald-500' : 'bg-zinc-500',
+                    ]"
+                  />
                 </div>
                 <div>
                   <div class="flex items-center gap-2">
@@ -107,6 +116,16 @@
                       ]"
                     >
                       {{ acc.user_role }}
+                    </span>
+                    <span
+                      :class="[
+                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
+                        acc.is_online
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                          : 'bg-zinc-800/80 text-zinc-400 border-zinc-600/40',
+                      ]"
+                    >
+                      {{ acc.is_online ? 'Online' : 'Offline' }}
                     </span>
                   </div>
                   <div class="text-[11px] text-white/60 flex items-center gap-3 mt-1">
@@ -292,11 +311,15 @@ const autofillDemoStaff = () => {
 const loadAccounts = async () => {
   fetching.value = true;
   try {
-    const res = await request<{ success: boolean; data: any[] }>('/api/admin/accounts');
+    const res = await request<{ success: boolean; data: any[] }>('/api/presence');
     if (res.success) {
       accounts.value = res.data;
     }
   } catch (err) {
+    try {
+      const fallback = await request<{ success: boolean; data: any[] }>('/api/admin/accounts');
+      if (fallback.success) accounts.value = fallback.data;
+    } catch {}
     console.error('Failed to load accounts:', err);
   } finally {
     fetching.value = false;

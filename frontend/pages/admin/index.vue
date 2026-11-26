@@ -68,7 +68,10 @@
         <!-- 5. Payment Audit Logs -->
         <PaymentLogs :payments="payments" />
 
-        <!-- 6. Guest Reviews & Feedback -->
+        <!-- 6. Team Presence (All Staff & Admins - Cloudflare Durable Objects) -->
+        <TeamPresencePanel :members="teamPresence" />
+
+        <!-- 7. Guest Reviews & Feedback -->
         <ReviewsPanel
           :reviews="reviews"
           :summary="reviewSummary"
@@ -106,6 +109,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useApi } from '../../composables/useApi';
+import { usePresence } from '../../composables/usePresence';
 
 import AdminLoginGate from '../../components/admin/AdminLoginGate.vue';
 import AdminHeader from '../../components/admin/AdminHeader.vue';
@@ -119,9 +123,11 @@ import AddSuiteModal from '../../components/admin/AddSuiteModal.vue';
 import StaffAccountsModal from '../../components/admin/StaffAccountsModal.vue';
 import CloudflareD1Modal from '../../components/admin/CloudflareD1Modal.vue';
 import ReviewsPanel from '../../components/shared/ReviewsPanel.vue';
+import TeamPresencePanel from '../../components/admin/TeamPresencePanel.vue';
 
 const { adminUser, isAuthenticated, isLoading, fetchSession, logout } = useAuth();
 const { request } = useApi();
+const { startPresence, stopPresence } = usePresence();
 
 const kpis = ref<any>({
   total_revenue: 0,
@@ -138,8 +144,37 @@ const bookings = ref<any[]>([]);
 const payments = ref<any[]>([]);
 const reviews = ref<any[]>([]);
 const reviewSummary = ref<any>({});
+const teamPresence = ref<any[]>([]);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let presenceEventSource: EventSource | null = null;
+
+const connectPresenceStream = () => {
+  if (typeof window === 'undefined') return;
+  if (presenceEventSource) {
+    presenceEventSource.close();
+    presenceEventSource = null;
+  }
+  const token = localStorage.getItem('burgundy_admin_token') || '';
+  const url = token ? `/api/presence/stream?token=${encodeURIComponent(token)}` : '/api/presence/stream';
+  const es = new EventSource(url);
+  es.onmessage = (evt) => {
+    try {
+      const payload = JSON.parse(evt.data);
+      if (Array.isArray(payload?.members)) {
+        teamPresence.value = payload.members;
+      }
+    } catch {}
+  };
+  presenceEventSource = es;
+};
+
+const disconnectPresenceStream = () => {
+  if (presenceEventSource) {
+    presenceEventSource.close();
+    presenceEventSource = null;
+  }
+};
 
 const isAddSuiteModalOpen = ref(false);
 const isAccountsModalOpen = ref(false);
@@ -148,21 +183,25 @@ const toastMessage = ref<string | null>(null);
 
 const loadDashboardData = async () => {
   try {
-    const [kpiRes, roomRes, bookingRes, paymentRes, reviewRes] = await Promise.all([
+    const [kpiRes, roomRes, bookingRes, paymentRes, reviewRes, presenceRes] = await Promise.allSettled([
       request<{ success: boolean; data: any }>('/api/admin/metrics'),
       request<{ success: boolean; data: any[] }>('/api/rooms'),
       request<{ success: boolean; data: any[] }>('/api/bookings'),
       request<{ success: boolean; data: any[] }>('/api/payments'),
       request<{ success: boolean; data: any[]; summary: any }>('/api/reviews'),
+      request<{ success: boolean; data: any[] }>('/api/presence'),
     ]);
 
-    if (kpiRes.success) kpis.value = kpiRes.data;
-    if (roomRes.success) rooms.value = roomRes.data;
-    if (bookingRes.success) bookings.value = bookingRes.data;
-    if (paymentRes.success) payments.value = paymentRes.data;
-    if (reviewRes.success) {
-      reviews.value = reviewRes.data || [];
-      reviewSummary.value = reviewRes.summary || {};
+    if (kpiRes.status === 'fulfilled' && kpiRes.value.success) kpis.value = kpiRes.value.data;
+    if (roomRes.status === 'fulfilled' && roomRes.value.success) rooms.value = roomRes.value.data;
+    if (bookingRes.status === 'fulfilled' && bookingRes.value.success) bookings.value = bookingRes.value.data;
+    if (paymentRes.status === 'fulfilled' && paymentRes.value.success) payments.value = paymentRes.value.data;
+    if (reviewRes.status === 'fulfilled' && reviewRes.value.success) {
+      reviews.value = reviewRes.value.data || [];
+      reviewSummary.value = reviewRes.value.summary || {};
+    }
+    if (presenceRes.status === 'fulfilled' && presenceRes.value.success) {
+      teamPresence.value = presenceRes.value.data || [];
     }
   } catch (err) {
     console.error('Error fetching dashboard data:', err);
@@ -178,6 +217,8 @@ const handleVisibility = () => {
 onMounted(async () => {
   await fetchSession('admin');
   if (isAuthenticated.value && adminUser.value?.user_role === 'admin') {
+    await startPresence(adminUser.value);
+    connectPresenceStream();
     loadDashboardData();
   }
   pollTimer = setInterval(() => {
@@ -190,15 +231,23 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (pollTimer) clearInterval(pollTimer);
+  disconnectPresenceStream();
+  stopPresence(true);
   document.removeEventListener('visibilitychange', handleVisibility);
 });
 
 const handleLoginSuccess = async () => {
+  if (adminUser.value) {
+    await startPresence(adminUser.value);
+    connectPresenceStream();
+  }
   await loadDashboardData();
 };
 
 const handleLogout = async () => {
-  await logout();
+  disconnectPresenceStream();
+  stopPresence(true);
+  await logout('admin');
 };
 
 const handleRoomStatusChange = async (roomId: number, status: string) => {

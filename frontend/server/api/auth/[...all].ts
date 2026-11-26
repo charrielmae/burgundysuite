@@ -61,19 +61,41 @@ export default defineEventHandler(async (event) => {
         const u = baSession.user as any;
         const role = u.role || 'admin';
         assertPortalRole(role);
+
+        let resolvedUserId = 1;
+        let resolvedUserName = u.name || rawIdentifier;
+        let resolvedFirstName = u.name?.split(' ')[0] || 'Clara';
+        let resolvedLastName = u.name?.split(' ').slice(1).join(' ') || 'Montague';
+        let resolvedPosition = u.position || 'General Manager';
+        let resolvedContact = '+63 917 555 8822';
+
+        try {
+          const { findUserInD1 } = await import('~/server/utils/d1');
+          const d1Match = await findUserInD1(rawIdentifier);
+          if (d1Match) {
+            resolvedUserId = Number(d1Match.user_id) || 1;
+            resolvedUserName = d1Match.user_name || resolvedUserName;
+            resolvedFirstName = d1Match.first_name || resolvedFirstName;
+            resolvedLastName = d1Match.last_name || resolvedLastName;
+            resolvedPosition = d1Match.position || resolvedPosition;
+            resolvedContact = d1Match.contact_number || resolvedContact;
+          }
+        } catch {}
+
         const userObj = {
-          user_id: 1,
-          user_name: u.name || rawIdentifier,
+          user_id: resolvedUserId,
+          user_name: resolvedUserName,
           user_role: role,
-          first_name: u.name?.split(' ')[0] || 'Clara',
-          last_name: u.name?.split(' ').slice(1).join(' ') || 'Montague',
-          position: u.position || 'General Manager',
-          contact_number: '+63 917 555 8822',
+          first_name: resolvedFirstName,
+          last_name: resolvedLastName,
+          position: resolvedPosition,
+          contact_number: resolvedContact,
           email: u.email,
         };
 
+        const sessionToken = `burgundy_session_${resolvedUserId}`;
         const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
-        setCookie(event, SESSION_COOKIE_NAME, baSession.token, {
+        setCookie(event, SESSION_COOKIE_NAME, sessionToken, {
           httpOnly: true,
           secure: isProd,
           sameSite: 'lax',
@@ -84,7 +106,7 @@ export default defineEventHandler(async (event) => {
         return {
           success: true,
           data: userObj,
-          token: baSession.token,
+          token: sessionToken,
           message: `Welcome back, ${userObj.first_name}!`,
         };
       }
@@ -322,42 +344,93 @@ export default defineEventHandler(async (event) => {
   // 2. COMPATIBILITY HANDLER FOR /api/auth/me
   // -------------------------------------------------------------
   if (cleanPath === '/api/auth/me' && method === 'GET') {
-    try {
-      const session = await auth.api.getSession({
-        headers: toWebRequest(event).headers,
-      });
+    const resolveProfileById = async (userId: number) => {
+      try {
+        const { queryD1 } = await import('~/server/utils/d1');
+        const rows = await queryD1(`
+          SELECT u.user_id, u.user_name, u.user_role, s.first_name, s.last_name, s.position, s.contact_number
+          FROM USER_ACCOUNT u
+          LEFT JOIN STAFF_DETAILS s ON u.user_id = s.user_id
+          WHERE u.user_id = ? LIMIT 1;
+        `, [userId]);
+        if (rows.length > 0) {
+          const u = rows[0];
+          return {
+            user_id: u.user_id,
+            user_name: u.user_name,
+            user_role: u.user_role || 'staff',
+            first_name: u.first_name || u.user_name,
+            last_name: u.last_name || 'Staff',
+            position: u.position || (u.user_role === 'admin' ? 'Administrator' : 'Staff Concierge'),
+            contact_number: u.contact_number || '+63 917 000 0000',
+            email: `${u.user_name}@burgundysuite.com`,
+          };
+        }
+      } catch {}
 
-      if (session?.user) {
-        const u = session.user as any;
-        return {
-          success: true,
-          authenticated: true,
-          data: {
-            user_id: 1,
-            user_name: u.name || 'admin',
-            user_role: u.role || 'admin',
-            first_name: u.name?.split(' ')[0] || 'Clara',
-            last_name: u.name?.split(' ').slice(1).join(' ') || 'Montague',
-            position: u.position || 'General Manager',
-            contact_number: '+63 917 555 8822',
-            email: u.email,
-          },
-          token: session.session?.token,
-        };
-      }
-    } catch {}
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const os = await import('os');
+        const candidatePaths = [
+          path.resolve(process.cwd(), 'server', 'data', 'burgundy_store.json'),
+          path.resolve(process.cwd(), 'frontend', 'server', 'data', 'burgundy_store.json'),
+          path.resolve(process.cwd(), '..', 'data', 'burgundy_store.json'),
+          path.resolve(process.cwd(), 'data', 'burgundy_store.json'),
+          path.join(os.tmpdir(), 'burgundy_store.json'),
+        ];
+        for (const p of candidatePaths) {
+          if (fs.existsSync(p)) {
+            const storeData = JSON.parse(fs.readFileSync(p, 'utf8'));
+            const found = (storeData?.USER_ACCOUNT || []).find((u: any) => Number(u.user_id) === userId);
+            if (found) {
+              const staff = (storeData?.STAFF_DETAILS || []).find((s: any) => Number(s.user_id) === userId) || {};
+              return {
+                user_id: found.user_id,
+                user_name: found.user_name,
+                user_role: found.user_role || 'staff',
+                first_name: staff.first_name || found.user_name,
+                last_name: staff.last_name || 'Staff',
+                position: staff.position || (found.user_role === 'admin' ? 'Administrator' : 'Staff Concierge'),
+                contact_number: staff.contact_number || '+63 917 000 0000',
+                email: `${found.user_name}@burgundysuite.com`,
+              };
+            }
+            break;
+          }
+        }
+      } catch {}
 
-    // Cookie & Header session fallback
-    let sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-    if (!sessionToken) {
-      const authHeader = getHeader(event, 'authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        sessionToken = authHeader.substring(7).trim();
-      }
-    }
-    if (!sessionToken) {
-      sessionToken = getHeader(event, 'x-admin-token')?.trim();
-    }
+      return null;
+    };
+
+    const resolveProfileByIdentifier = async (identifier: string, fallbackUser?: any) => {
+      try {
+        const { findUserInD1 } = await import('~/server/utils/d1');
+        const d1Match = await findUserInD1(identifier);
+        if (d1Match) {
+          return {
+            user_id: Number(d1Match.user_id),
+            user_name: d1Match.user_name,
+            user_role: d1Match.user_role || fallbackUser?.role || 'admin',
+            first_name: d1Match.first_name || d1Match.user_name,
+            last_name: d1Match.last_name || '',
+            position: d1Match.position || fallbackUser?.position || 'Administrator',
+            contact_number: d1Match.contact_number || '+63 917 000 0000',
+            email: fallbackUser?.email || `${d1Match.user_name}@burgundysuite.com`,
+          };
+        }
+      } catch {}
+      return null;
+    };
+
+    // Prioritize explicit Authorization: Bearer / X-Admin-Token headers over shared cookie
+    const authHeader = getHeader(event, 'authorization');
+    const bearerToken =
+      authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+    const headerToken = bearerToken || getHeader(event, 'x-admin-token')?.trim() || '';
+    const cookieToken = getCookie(event, SESSION_COOKIE_NAME) || '';
+    const sessionToken = headerToken || cookieToken;
 
     if (sessionToken) {
       if (sessionToken === 'burgundy_master_session_token') {
@@ -376,78 +449,80 @@ export default defineEventHandler(async (event) => {
           },
           token: sessionToken,
         };
-      } else if (sessionToken.startsWith('burgundy_session_')) {
-        const userIdStr = sessionToken.replace('burgundy_session_', '');
-        const userId = Number(userIdStr);
-        if (userId) {
-          try {
-            const { queryD1 } = await import('~/server/utils/d1');
-            const rows = await queryD1(`
-              SELECT u.user_id, u.user_name, u.user_role, s.first_name, s.last_name, s.position, s.contact_number
-              FROM USER_ACCOUNT u
-              LEFT JOIN STAFF_DETAILS s ON u.user_id = s.user_id
-              WHERE u.user_id = ? LIMIT 1;
-            `, [userId]);
-            if (rows.length > 0) {
-              const u = rows[0];
-              return {
-                success: true,
-                authenticated: true,
-                data: {
-                  user_id: u.user_id,
-                  user_name: u.user_name,
-                  user_role: u.user_role || 'staff',
-                  first_name: u.first_name || u.user_name,
-                  last_name: u.last_name || 'Staff',
-                  position: u.position || (u.user_role === 'admin' ? 'Administrator' : 'Staff Concierge'),
-                  contact_number: u.contact_number || '+63 917 000 0000',
-                  email: `${u.user_name}@burgundysuite.com`,
-                },
-                token: sessionToken,
-              };
-            }
-          } catch {}
+      }
 
-          // Local JSON store fallback when D1 is unavailable
-          try {
-            const fs = await import('fs');
-            const path = await import('path');
-            const os = await import('os');
-            const candidatePaths = [
-              path.resolve(process.cwd(), 'server', 'data', 'burgundy_store.json'),
-              path.resolve(process.cwd(), 'frontend', 'server', 'data', 'burgundy_store.json'),
-              path.resolve(process.cwd(), '..', 'data', 'burgundy_store.json'),
-              path.resolve(process.cwd(), 'data', 'burgundy_store.json'),
-              path.join(os.tmpdir(), 'burgundy_store.json'),
-            ];
-            for (const p of candidatePaths) {
-              if (fs.existsSync(p)) {
-                const storeData = JSON.parse(fs.readFileSync(p, 'utf8'));
-                const found = (storeData?.USER_ACCOUNT || []).find((u: any) => Number(u.user_id) === userId);
-                if (found) {
-                  const staff = (storeData?.STAFF_DETAILS || []).find((s: any) => Number(s.user_id) === userId) || {};
-                  return {
-                    success: true,
-                    authenticated: true,
-                    data: {
-                      user_id: found.user_id,
-                      user_name: found.user_name,
-                      user_role: found.user_role || 'staff',
-                      first_name: staff.first_name || found.user_name,
-                      last_name: staff.last_name || 'Staff',
-                      position: staff.position || (found.user_role === 'admin' ? 'Administrator' : 'Staff Concierge'),
-                      contact_number: staff.contact_number || '+63 917 000 0000',
-                      email: `${found.user_name}@burgundysuite.com`,
-                    },
-                    token: sessionToken,
-                  };
-                }
-                break;
-              }
-            }
-          } catch {}
+      if (sessionToken.startsWith('burgundy_session_')) {
+        const userId = Number(sessionToken.replace('burgundy_session_', ''));
+        if (userId) {
+          const profile = await resolveProfileById(userId);
+          if (profile) {
+            return {
+              success: true,
+              authenticated: true,
+              data: profile,
+              token: sessionToken,
+            };
+          }
         }
       }
+
+      // Check Better Auth in-memory session store by token
+      try {
+        const { memoryStore } = await import('~/server/utils/auth');
+        const memSession = (memoryStore.session || []).find((s: any) => s.token === sessionToken);
+        if (memSession && (!memSession.expiresAt || new Date(memSession.expiresAt).getTime() > Date.now())) {
+          const memUser = (memoryStore.user || []).find((u: any) => u.id === memSession.userId);
+          if (memUser) {
+            const identifier = memUser.email?.split('@')[0] || memUser.name || '';
+            const resolved = identifier ? await resolveProfileByIdentifier(identifier, memUser) : null;
+            return {
+              success: true,
+              authenticated: true,
+              data: resolved || {
+                user_id: 1,
+                user_name: memUser.name || identifier || 'admin',
+                user_role: memUser.role || 'admin',
+                first_name: memUser.name?.split(' ')[0] || 'Clara',
+                last_name: memUser.name?.split(' ').slice(1).join(' ') || 'Montague',
+                position: memUser.position || 'General Manager',
+                contact_number: '+63 917 555 8822',
+                email: memUser.email,
+              },
+              token: sessionToken,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // Only check Better Auth cookie session when no explicit header token was provided
+    if (!headerToken) {
+      try {
+        const session = await auth.api.getSession({
+          headers: toWebRequest(event).headers,
+        });
+
+        if (session?.user) {
+          const u = session.user as any;
+          const identifier = u.email?.split('@')[0] || u.name || '';
+          const resolved = identifier ? await resolveProfileByIdentifier(identifier, u) : null;
+          return {
+            success: true,
+            authenticated: true,
+            data: resolved || {
+              user_id: 1,
+              user_name: u.name || 'admin',
+              user_role: u.role || 'admin',
+              first_name: u.name?.split(' ')[0] || 'Clara',
+              last_name: u.name?.split(' ').slice(1).join(' ') || 'Montague',
+              position: u.position || 'General Manager',
+              contact_number: '+63 917 555 8822',
+              email: u.email,
+            },
+            token: session.session?.token,
+          };
+        }
+      } catch {}
     }
 
     return {

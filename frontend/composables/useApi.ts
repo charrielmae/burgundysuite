@@ -14,10 +14,13 @@ export function useApi() {
       headers.set('Content-Type', 'application/json');
     }
 
-    // Attach admin token from localStorage if available (supports cookie-less / serverless proxies)
+    // Attach portal-scoped token from localStorage if available (supports cookie-less / serverless proxies)
     if (typeof window !== 'undefined') {
       try {
-        const token = localStorage.getItem('burgundy_admin_token');
+        const isStaffPortal = window.location.pathname.startsWith('/staff');
+        const token = isStaffPortal
+          ? localStorage.getItem('burgundy_staff_token') || localStorage.getItem('burgundy_admin_token')
+          : localStorage.getItem('burgundy_admin_token');
         if (token && !headers.has('Authorization')) {
           headers.set('Authorization', `Bearer ${token}`);
           headers.set('X-Admin-Token', token);
