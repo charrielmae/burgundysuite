@@ -73,6 +73,13 @@
           >
             Amenities
           </a>
+          <a
+            href="#reviews"
+            @click.prevent="scrollToSection('reviews')"
+            class="hover:text-[#E5C378] transition-all duration-300 relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 hover:after:w-full after:h-[2px] after:bg-[#E5C378] after:transition-all after:duration-300"
+          >
+            Reviews
+          </a>
           <button
             type="button"
             @click="$emit('open-my-bookings')"

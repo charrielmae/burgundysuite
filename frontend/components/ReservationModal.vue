@@ -595,8 +595,15 @@ const handleAuthorizeBooking = async () => {
     confirmedBooking.value = res.data;
     step.value = 4;
     emit('booking-success', res.data);
-  } catch (err) {
-    error.value = (err as Error).message;
+  } catch (err: any) {
+    if (err?.statusCode === 409) {
+      error.value =
+        err.message ||
+        'This suite was just booked by another guest and is no longer available. Please choose another suite or dates.';
+      emit('booking-success', null);
+    } else {
+      error.value = err?.message || 'Failed to complete booking.';
+    }
   } finally {
     loading.value = false;
   }

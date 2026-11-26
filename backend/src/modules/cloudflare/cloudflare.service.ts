@@ -259,6 +259,18 @@ export class CloudflareService {
     }
 
     const ddlStatements = [
+      `CREATE TABLE IF NOT EXISTS ROLE (
+        role_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role_name VARCHAR(20) UNIQUE NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS POSITION (
+        position_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        position_name VARCHAR(40) UNIQUE NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS BOOKING_STATUS (
+        booking_status_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_status VARCHAR(20) UNIQUE NOT NULL
+      );`,
       `CREATE TABLE IF NOT EXISTS USER_ACCOUNT (
         user_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_name VARCHAR(50) UNIQUE NOT NULL,
@@ -321,11 +333,59 @@ export class CloudflareService {
         payment_status VARCHAR(20) NOT NULL,
         payment_date DATETIME NULL
       );`,
+      `CREATE TABLE IF NOT EXISTS GUEST_REVIEW (
+        review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_id INTEGER NULL,
+        room_type_id INTEGER NULL,
+        target_type VARCHAR(20) NOT NULL,
+        guest_name VARCHAR(80) NOT NULL,
+        guest_email VARCHAR(80) NOT NULL,
+        room_rating INTEGER NOT NULL,
+        service_rating INTEGER NOT NULL,
+        overall_rating INTEGER NOT NULL,
+        comment TEXT NOT NULL,
+        staff_reply TEXT NULL,
+        replied_by VARCHAR(80) NULL,
+        replied_at DATETIME NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`,
     ];
 
     await this.batchCloudflareD1(ddlStatements.map((sql) => ({ sql, params: [] })));
 
     const dataStatements: Array<{ sql: string; params: any[] }> = [];
+
+    for (const r of store.ROLE || [
+      { role_id: 1, role_name: 'admin' },
+      { role_id: 2, role_name: 'staff' },
+    ]) {
+      dataStatements.push({
+        sql: `INSERT OR REPLACE INTO ROLE (role_id, role_name) VALUES (?, ?);`,
+        params: [r.role_id, r.role_name],
+      });
+    }
+
+    for (const pos of store.POSITION || [
+      { position_id: 1, position_name: 'administrator' },
+      { position_id: 2, position_name: 'receptionist' },
+    ]) {
+      dataStatements.push({
+        sql: `INSERT OR REPLACE INTO POSITION (position_id, position_name) VALUES (?, ?);`,
+        params: [pos.position_id, pos.position_name],
+      });
+    }
+
+    for (const bs of store.BOOKING_STATUS || [
+      { booking_status_id: 1, booking_status: 'confirmed' },
+      { booking_status_id: 2, booking_status: 'checked-in' },
+      { booking_status_id: 3, booking_status: 'completed' },
+      { booking_status_id: 4, booking_status: 'cancelled' },
+    ]) {
+      dataStatements.push({
+        sql: `INSERT OR REPLACE INTO BOOKING_STATUS (booking_status_id, booking_status) VALUES (?, ?);`,
+        params: [bs.booking_status_id, bs.booking_status],
+      });
+    }
 
     for (const u of store.USER_ACCOUNT || []) {
       dataStatements.push({
@@ -411,6 +471,28 @@ export class CloudflareService {
       });
     }
 
+    for (const rev of store.GUEST_REVIEW || []) {
+      dataStatements.push({
+        sql: `INSERT OR REPLACE INTO GUEST_REVIEW (review_id, booking_id, room_type_id, target_type, guest_name, guest_email, room_rating, service_rating, overall_rating, comment, staff_reply, replied_by, replied_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        params: [
+          rev.review_id,
+          rev.booking_id ?? null,
+          rev.room_type_id ?? null,
+          rev.target_type || 'both',
+          rev.guest_name,
+          rev.guest_email,
+          rev.room_rating,
+          rev.service_rating,
+          rev.overall_rating,
+          rev.comment,
+          rev.staff_reply ?? null,
+          rev.replied_by ?? null,
+          rev.replied_at ?? null,
+          rev.created_at || new Date().toISOString(),
+        ],
+      });
+    }
+
     const CHUNK_SIZE = 50;
     for (let i = 0; i < dataStatements.length; i += CHUNK_SIZE) {
       const chunk = dataStatements.slice(i, i + CHUNK_SIZE);
@@ -421,6 +503,9 @@ export class CloudflareService {
       success: true,
       message: `All ${dataStatements.length} store records successfully synchronized into Cloudflare D1!`,
       syncedCounts: {
+        roles: (store.ROLE || []).length || 2,
+        positions: (store.POSITION || []).length || 2,
+        booking_statuses: (store.BOOKING_STATUS || []).length || 4,
         users: (store.USER_ACCOUNT || []).length,
         staff: (store.STAFF_DETAILS || []).length,
         guests: (store.GUEST_DETAILS || []).length,
@@ -428,6 +513,7 @@ export class CloudflareService {
         rooms: (store.ROOM_DETAILS || []).length,
         bookings: (store.ROOM_BOOKING || []).length,
         payments: (store.PAYMENT_DETAILS || []).length,
+        reviews: (store.GUEST_REVIEW || []).length,
       },
     };
   }

@@ -3,15 +3,32 @@
 export type UserRole = 'admin' | 'staff' | 'guest';
 export type AccountStatus = 'active' | 'suspended';
 export type RoomType = 'Deluxe Suite' | 'Executive King' | 'Presidential Suite' | 'Penthouse Haven';
-export type RoomStatus = 'available' | 'occupied' | 'maintenance';
-export type BookingStatus = 'pending' | 'checked-in' | 'completed' | 'cancelled';
+export type RoomStatus = 'available' | 'occupied' | 'maintenance' | 'under maintenance';
+export type BookingStatus = 'pending' | 'confirmed' | 'checked-in' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
+
+// Lookup Tables (3NF Normalized ERD)
+export interface RoleRecord {
+  role_id: number;
+  role_name: 'admin' | 'staff';
+}
+
+export interface PositionRecord {
+  position_id: number;
+  position_name: string;
+}
+
+export interface BookingStatusRecord {
+  booking_status_id: number;
+  booking_status: 'confirmed' | 'checked-in' | 'completed' | 'cancelled';
+}
 
 // 1. USER_ACCOUNT
 export interface UserAccount {
   user_id: number;
   user_name: string;
   password_hash: string;
+  role_id?: number;
   user_role: UserRole;
   acc_status: AccountStatus;
   created_date: string;
@@ -23,12 +40,14 @@ export interface StaffDetails {
   user_id: number;
   first_name: string;
   last_name: string;
+  position_id?: number;
   position: string;
   contact_number: string;
 }
 
 // 3. GUEST_DETAILS
 export interface GuestDetails {
+  guest_id?: number;
   user_id: number;
   first_name: string;
   last_name: string;
@@ -74,12 +93,14 @@ export interface RoomDetails {
 // 6. ROOM_BOOKING
 export interface RoomBooking {
   booking_id: number;
+  guest_id?: number;
   user_id: number;
   room_id: number;
   booking_date: string;
   check_in_date: string;
   check_out_date: string;
   total_amount: number;
+  booking_status_id?: number;
   booking_status: BookingStatus;
 }
 
@@ -208,4 +229,42 @@ export interface RoomAvailabilityResponse {
   nights: number;
   results: RoomAvailabilityResult[];
 }
+
+// 8. GUEST_REVIEW (Service & Rooms Feedback)
+export type ReviewTargetType = 'room' | 'service' | 'both';
+
+export interface GuestReview {
+  review_id: number;
+  booking_id: number | null;
+  room_type_id: number | null;
+  room_type?: string | null;
+  target_type: ReviewTargetType;
+  guest_name: string;
+  guest_email: string;
+  room_rating: number;
+  service_rating: number;
+  overall_rating: number;
+  comment: string;
+  staff_reply: string | null;
+  replied_by: string | null;
+  replied_at: string | null;
+  created_at: string;
+}
+
+export interface NewReviewRequest {
+  booking_id?: number | null;
+  room_type_id?: number | null;
+  target_type?: ReviewTargetType;
+  guest_name: string;
+  guest_email: string;
+  room_rating: number;
+  service_rating: number;
+  comment: string;
+}
+
+export interface ReviewReplyRequest {
+  staff_reply: string;
+  replied_by?: string;
+}
+
 

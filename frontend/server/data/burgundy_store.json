@@ -210,6 +210,15 @@
       "user_role": "admin",
       "acc_status": "active",
       "created_date": "2026-10-24T11:38:53.577Z"
+    },
+    {
+      "user_id": 34,
+      "user_name": "ian_glenn",
+      "password_hash": "argon2id$custom$ian_glenn",
+      "plain_password": "ian_glenn",
+      "user_role": "staff",
+      "acc_status": "active",
+      "created_date": "2026-11-26T10:35:13.341Z"
     }
   ],
   "STAFF_DETAILS": [
@@ -292,6 +301,14 @@
       "last_name": "Ayuban",
       "position": "Admin",
       "contact_number": "09664815395"
+    },
+    {
+      "staff_id": 109,
+      "user_id": 34,
+      "first_name": "Ian",
+      "last_name": "Glenn",
+      "position": "Janitor lang",
+      "contact_number": "09644545464546"
     }
   ],
   "GUEST_DETAILS": [
@@ -667,6 +684,135 @@
   ],
   "ROOM_BOOKING": [
     {
+      "booking_id": 1019,
+      "user_id": 35,
+      "room_id": 3,
+      "booking_date": "2026-11-26",
+      "check_in_date": "2026-11-27",
+      "check_out_date": "2026-11-30",
+      "total_amount": 2250,
+      "booking_status": "checked-in",
+      "guest": {
+        "user_id": 35,
+        "first_name": "Haymitch",
+        "last_name": "Abernathy",
+        "email_address": "haymitch.abernathy@gmail.com",
+        "contact_number": "09564879896",
+        "birth_date": "1990-06-15",
+        "nationality": "Filipino",
+        "civil_status": "Single",
+        "address": "Purok Dose"
+      },
+      "room": {
+        "room_id": 3,
+        "room_type_id": 3,
+        "room_number": 201,
+        "floor_number": 2,
+        "room_status": "occupied"
+      },
+      "room_type": {
+        "room_type_id": 3,
+        "room_type": "Presidential Suite",
+        "room_capacity": 4,
+        "rate_per_night": 750,
+        "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80",
+        "badge": "Up to 4 Guests",
+        "description": "Expansive private suite with personal butler, living lounge, and ocean plunge pool."
+      },
+      "payment": {
+        "payment_id": 523,
+        "booking_id": 1019,
+        "payment_method": "Pay at Counter",
+        "amount": 2250,
+        "payment_status": "paid",
+        "payment_date": "2026-11-26T10:44:35.438Z"
+      }
+    },
+    {
+      "booking_id": 1021,
+      "user_id": 1031,
+      "room_id": 3,
+      "booking_date": "2026-11-26",
+      "check_in_date": "2027-01-10",
+      "check_out_date": "2027-01-12",
+      "total_amount": 1500,
+      "booking_status": "checked-in",
+      "guest": {
+        "user_id": 1031,
+        "first_name": "A",
+        "last_name": "Race",
+        "email_address": "a@t.com",
+        "contact_number": "+639170000001",
+        "address": ""
+      },
+      "room": {
+        "room_id": 3,
+        "room_type_id": 3,
+        "room_number": 201,
+        "floor_number": 2,
+        "room_status": "occupied"
+      },
+      "room_type": {
+        "room_type_id": 3,
+        "room_type": "Presidential Suite",
+        "room_capacity": 4,
+        "rate_per_night": 750,
+        "description": "Expansive private suite with personal butler, living lounge, and ocean plunge pool.",
+        "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80",
+        "badge": "Up to 4 Guests",
+        "features": [
+          "Private Butler Service",
+          "Infinity Edge Plunge Pool",
+          "Grand Living Salon"
+        ]
+      }
+    },
+    {
+      "booking_id": 1018,
+      "user_id": 31,
+      "room_id": 3,
+      "booking_date": "2026-11-26",
+      "check_in_date": "2026-12-10",
+      "check_out_date": "2026-12-12",
+      "total_amount": 1500,
+      "booking_status": "checked-in",
+      "guest": {
+        "user_id": 31,
+        "first_name": "GuestA",
+        "last_name": "RaceTest",
+        "email_address": "guesta@test.com",
+        "contact_number": "+639170000001",
+        "birth_date": "1990-01-01",
+        "nationality": "Filipino",
+        "civil_status": "Single",
+        "address": "Philippines"
+      },
+      "room": {
+        "room_id": 3,
+        "room_type_id": 3,
+        "room_number": 201,
+        "floor_number": 2,
+        "room_status": "occupied"
+      },
+      "room_type": {
+        "room_type_id": 3,
+        "room_type": "Presidential Suite",
+        "room_capacity": 4,
+        "rate_per_night": 750,
+        "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80",
+        "badge": "Up to 4 Guests",
+        "description": "Expansive private suite with personal butler, living lounge, and ocean plunge pool."
+      },
+      "payment": {
+        "payment_id": 522,
+        "booking_id": 1018,
+        "payment_method": "Credit Card (Visa Signature)",
+        "amount": 1500,
+        "payment_status": "paid",
+        "payment_date": "2026-11-26T10:28:39.827Z"
+      }
+    },
+    {
       "booking_id": 1014,
       "user_id": 25,
       "room_id": 1,
@@ -844,6 +990,30 @@
   ],
   "PAYMENT_DETAILS": [
     {
+      "payment_id": 523,
+      "booking_id": 1019,
+      "payment_method": "Pay at Counter",
+      "amount": 2250,
+      "payment_status": "paid",
+      "payment_date": "2026-11-26T10:44:35.438Z"
+    },
+    {
+      "payment_id": 523,
+      "booking_id": 1021,
+      "payment_method": "Credit Card",
+      "amount": 1500,
+      "payment_status": "paid",
+      "payment_date": "2026-11-26T10:30:33.448Z"
+    },
+    {
+      "payment_id": 522,
+      "booking_id": 1018,
+      "payment_method": "Credit Card (Visa Signature)",
+      "amount": 1500,
+      "payment_status": "paid",
+      "payment_date": "2026-11-26T10:28:39.827Z"
+    },
+    {
       "payment_id": 501,
       "booking_id": 1001,
       "payment_method": "Credit Card (Visa Signature)",
@@ -978,6 +1148,59 @@
       "amount": 420,
       "payment_status": "paid",
       "payment_date": "2026-10-20T08:31:15.874Z"
+    }
+  ],
+  "GUEST_REVIEW": [
+    {
+      "review_id": 3,
+      "booking_id": null,
+      "room_type_id": null,
+      "room_type": "Resort Service",
+      "target_type": "both",
+      "guest_name": "Ian",
+      "guest_email": "ian.curilan@gmail.com",
+      "room_rating": 5,
+      "service_rating": 5,
+      "overall_rating": 5,
+      "comment": "11/10",
+      "staff_reply": null,
+      "replied_by": null,
+      "replied_at": null,
+      "created_at": "2026-11-26T11:12:21.548Z"
+    },
+    {
+      "review_id": 2,
+      "booking_id": null,
+      "room_type_id": 1,
+      "room_type": "Deluxe Suite",
+      "target_type": "both",
+      "guest_name": "Test Guest",
+      "guest_email": "test@example.com",
+      "room_rating": 5,
+      "service_rating": 5,
+      "overall_rating": 5,
+      "comment": "Automated verification review",
+      "staff_reply": "Thank you for staying with us!",
+      "replied_by": "staff_vincent (admin)",
+      "replied_at": "2026-11-26T10:30:16.994Z",
+      "created_at": "2026-11-26T10:30:16.514Z"
+    },
+    {
+      "review_id": 1,
+      "booking_id": null,
+      "room_type_id": 1,
+      "room_type": "Deluxe Suite",
+      "target_type": "both",
+      "guest_name": "Test Guest",
+      "guest_email": "test@example.com",
+      "room_rating": 5,
+      "service_rating": 5,
+      "overall_rating": 5,
+      "comment": "Automated verification review",
+      "staff_reply": null,
+      "replied_by": null,
+      "replied_at": null,
+      "created_at": "2026-11-26T10:28:37.770Z"
     }
   ]
 }

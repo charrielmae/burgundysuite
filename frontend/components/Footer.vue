@@ -54,6 +54,15 @@
             </li>
             <li>
               <NuxtLink
+                to="/staff"
+                class="hover:text-zinc-200 transition-colors flex items-center gap-1.5"
+              >
+                <UserCheck class="w-3 h-3 text-zinc-300" />
+                <span>Staff Portal</span>
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink
                 to="/admin"
                 class="hover:text-[#E5C378] transition-colors flex items-center gap-1.5"
               >
@@ -110,8 +119,15 @@
           <span class="hover:text-white cursor-pointer">Terms of Hospitality</span>
           <span class="hover:text-white cursor-pointer">Concierge Protocols</span>
           <NuxtLink
+            to="/staff"
+            class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-500/40 text-zinc-300 hover:text-white hover:border-zinc-300 transition-all cursor-pointer shadow-xs"
+          >
+            <UserCheck class="w-3.5 h-3.5 text-zinc-300" />
+            <span class="font-semibold text-[11px]">Staff Portal</span>
+          </NuxtLink>
+          <NuxtLink
             to="/admin"
-            class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2B0E14] border border-[#5A1C2A] text-[#E5C378] hover:text-white hover:border-[#E5C378] transition-all cursor-pointer shadow-xs ml-1"
+            class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2B0E14] border border-[#5A1C2A] text-[#E5C378] hover:text-white hover:border-[#E5C378] transition-all cursor-pointer shadow-xs"
           >
             <ShieldCheck class="w-3.5 h-3.5 text-[#E5C378]" />
             <span class="font-semibold text-[11px]">Admin Portal</span>
@@ -125,7 +141,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import { MapPin, Phone, Mail, Globe, Share2, Compass, ShieldCheck } from 'lucide-vue-next';
+import { MapPin, Phone, Mail, Globe, Share2, Compass, ShieldCheck, UserCheck } from 'lucide-vue-next';
 
 const route = useRoute();
 const router = useRouter();

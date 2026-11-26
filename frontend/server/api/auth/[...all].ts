@@ -23,6 +23,22 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event).catch(() => ({}));
     const rawIdentifier = String(body?.username || body?.user_name || body?.email || '').trim();
     const password = String(body?.password || '').trim();
+    const portal = body?.portal === 'admin' || body?.portal === 'staff' ? body.portal : undefined;
+
+    const assertPortalRole = (role: string) => {
+      if (portal === 'admin' && role !== 'admin') {
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'This is a Staff account. Please sign in through the Staff Portal (/staff).',
+        });
+      }
+      if (portal === 'staff' && role !== 'staff') {
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'This is an Admin account. Please sign in through the Admin Portal (/admin).',
+        });
+      }
+    };
 
     if (!rawIdentifier || !password) {
       throw createError({
@@ -43,10 +59,12 @@ export default defineEventHandler(async (event) => {
 
       if (baSession?.user) {
         const u = baSession.user as any;
+        const role = u.role || 'admin';
+        assertPortalRole(role);
         const userObj = {
           user_id: 1,
           user_name: u.name || rawIdentifier,
-          user_role: u.role || 'admin',
+          user_role: role,
           first_name: u.name?.split(' ')[0] || 'Clara',
           last_name: u.name?.split(' ').slice(1).join(' ') || 'Montague',
           position: u.position || 'General Manager',
@@ -70,7 +88,9 @@ export default defineEventHandler(async (event) => {
           message: `Welcome back, ${userObj.first_name}!`,
         };
       }
-    } catch {}
+    } catch (err: any) {
+      if (err?.statusCode === 403) throw err;
+    }
 
     // B. Check persistent Cloudflare D1 database (USER_ACCOUNT + STAFF_DETAILS)
     try {
@@ -87,6 +107,7 @@ export default defineEventHandler(async (event) => {
           (d1User.user_role === 'staff' && ['staff123', 'staff', 'password'].includes(password));
 
         if (match) {
+          assertPortalRole(d1User.user_role || 'staff');
           const userObj = {
             user_id: d1User.user_id,
             user_name: d1User.user_name,
@@ -128,7 +149,8 @@ export default defineEventHandler(async (event) => {
           };
         }
       }
-    } catch (d1Err) {
+    } catch (d1Err: any) {
+      if (d1Err?.statusCode === 403) throw d1Err;
       console.warn('[Cloudflare D1 Auth Lookup Warning]:', d1Err);
     }
 
@@ -174,6 +196,7 @@ export default defineEventHandler(async (event) => {
             password === 'staff123';
 
           if (match) {
+            assertPortalRole(found.user_role || 'staff');
             const staffList = Array.isArray(storeData.STAFF_DETAILS) ? storeData.STAFF_DETAILS : [];
             const staff = staffList.find((s: any) => s.user_id === found.user_id) || {};
 
@@ -215,14 +238,17 @@ export default defineEventHandler(async (event) => {
           }
         }
       }
-    } catch {}
+    } catch (localErr: any) {
+      if (localErr?.statusCode === 403) throw localErr;
+    }
 
-    // D. Check default demo executive credentials
+    // D. Check default demo executive & staff credentials
     const isMaster =
       ['admin_clara', 'admin', 'administrator', 'manager', 'clara', 'admin@burgundysuite.com', 'admin_clara@burgundysuite.com'].includes(rawIdentifier.toLowerCase()) &&
       ['admin123', 'admin', 'admin123password', 'burgundy2026', 'password'].includes(password);
 
     if (isMaster) {
+      assertPortalRole('admin');
       const masterObj = {
         user_id: 1,
         user_name: 'admin_clara',
@@ -248,6 +274,41 @@ export default defineEventHandler(async (event) => {
         data: masterObj,
         token: 'burgundy_master_session_token',
         message: 'Welcome back, Clara Montague!',
+      };
+    }
+
+    const isDemoStaff =
+      ['staff_vincent', 'staff_helena', 'staff', 'vincent', 'helena', 'staff@burgundysuite.com', 'staff_vincent@burgundysuite.com'].includes(rawIdentifier.toLowerCase()) &&
+      ['staff123', 'staff', 'password'].includes(password);
+
+    if (isDemoStaff) {
+      assertPortalRole('staff');
+      const isHelena = rawIdentifier.toLowerCase().includes('helena');
+      const staffObj = {
+        user_id: isHelena ? 3 : 2,
+        user_name: isHelena ? 'staff_helena' : 'staff_vincent',
+        user_role: 'staff' as const,
+        first_name: isHelena ? 'Helena' : 'Vincent',
+        last_name: isHelena ? 'Reyes' : 'Mercer',
+        position: isHelena ? 'Front Desk Supervisor' : 'Head Concierge',
+        contact_number: isHelena ? '+63 917 555 0103' : '+63 917 555 0102',
+        email: isHelena ? 'staff_helena@burgundysuite.com' : 'staff_vincent@burgundysuite.com',
+      };
+
+      const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+      setCookie(event, SESSION_COOKIE_NAME, `burgundy_session_${staffObj.user_id}`, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60,
+      });
+
+      return {
+        success: true,
+        data: staffObj,
+        token: `burgundy_session_${staffObj.user_id}`,
+        message: `Welcome back, ${staffObj.first_name} ${staffObj.last_name}!`,
       };
     }
 
@@ -344,6 +405,45 @@ export default defineEventHandler(async (event) => {
                 },
                 token: sessionToken,
               };
+            }
+          } catch {}
+
+          // Local JSON store fallback when D1 is unavailable
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const os = await import('os');
+            const candidatePaths = [
+              path.resolve(process.cwd(), 'server', 'data', 'burgundy_store.json'),
+              path.resolve(process.cwd(), 'frontend', 'server', 'data', 'burgundy_store.json'),
+              path.resolve(process.cwd(), '..', 'data', 'burgundy_store.json'),
+              path.resolve(process.cwd(), 'data', 'burgundy_store.json'),
+              path.join(os.tmpdir(), 'burgundy_store.json'),
+            ];
+            for (const p of candidatePaths) {
+              if (fs.existsSync(p)) {
+                const storeData = JSON.parse(fs.readFileSync(p, 'utf8'));
+                const found = (storeData?.USER_ACCOUNT || []).find((u: any) => Number(u.user_id) === userId);
+                if (found) {
+                  const staff = (storeData?.STAFF_DETAILS || []).find((s: any) => Number(s.user_id) === userId) || {};
+                  return {
+                    success: true,
+                    authenticated: true,
+                    data: {
+                      user_id: found.user_id,
+                      user_name: found.user_name,
+                      user_role: found.user_role || 'staff',
+                      first_name: staff.first_name || found.user_name,
+                      last_name: staff.last_name || 'Staff',
+                      position: staff.position || (found.user_role === 'admin' ? 'Administrator' : 'Staff Concierge'),
+                      contact_number: staff.contact_number || '+63 917 000 0000',
+                      email: `${found.user_name}@burgundysuite.com`,
+                    },
+                    token: sessionToken,
+                  };
+                }
+                break;
+              }
             }
           } catch {}
         }

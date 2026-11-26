@@ -14,12 +14,29 @@
 
     <SuitesSection
       :room-types="roomTypes"
+      :availability-map="availabilityMap"
       @book-suite="openReservationModal"
     />
 
     <AmenitiesSection />
 
+    <ReviewsSection
+      :reviews="reviews"
+      :summary="reviewSummary"
+      :room-types="roomTypes"
+      @review-submitted="fetchReviews"
+      @open-review-modal="isReviewModalOpen = true"
+    />
+
     <Footer />
+
+    <!-- Automatic Public Guest Review Pop-Up Modal -->
+    <AutoReviewPopupModal
+      :is-open="isReviewModalOpen"
+      :room-types="roomTypes"
+      @close="closeReviewModal"
+      @review-submitted="fetchReviews"
+    />
 
     <!-- Room Availability Modal (Check room availability without reserving) -->
     <AvailabilityModal
@@ -52,8 +69,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useApi } from '../composables/useApi';
+import ReviewsSection from '../components/ReviewsSection.vue';
+import AutoReviewPopupModal from '../components/AutoReviewPopupModal.vue';
 
 const DEFAULT_SUITES = [
   {
@@ -141,12 +160,19 @@ const DEFAULT_SUITES = [
 const { request } = useApi();
 
 const roomTypes = ref<any[]>(DEFAULT_SUITES);
+const availabilityMap = ref<Record<number, any>>({});
+const reviews = ref<any[]>([]);
+const reviewSummary = ref<any>({});
 const isAvailabilityModalOpen = ref(false);
 const isReservationModalOpen = ref(false);
 const isMyBookingsModalOpen = ref(false);
+const isReviewModalOpen = ref(false);
 const selectedSuiteTypeId = ref<number>(1);
 const heroCheckIn = ref<string>('');
 const heroCheckOut = ref<string>('');
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let autoReviewTimer: ReturnType<typeof setTimeout> | null = null;
 
 const fetchRoomTypes = async () => {
   try {
@@ -159,9 +185,74 @@ const fetchRoomTypes = async () => {
   }
 };
 
-onMounted(() => {
+const fetchAvailability = async () => {
+  try {
+    const res = await request<{ success: boolean; data: { results: any[] } }>('/api/rooms/availability');
+    if (res.success && Array.isArray(res.data?.results)) {
+      const map: Record<number, any> = {};
+      for (const r of res.data.results) {
+        map[r.room_type_id] = r;
+      }
+      availabilityMap.value = map;
+    }
+  } catch {}
+};
+
+const fetchReviews = async () => {
+  try {
+    const res = await request<{ success: boolean; data: any[]; summary: any }>('/api/reviews');
+    if (res.success) {
+      reviews.value = res.data || [];
+      reviewSummary.value = res.summary || {};
+    }
+  } catch {}
+};
+
+const refreshAll = () => {
   fetchRoomTypes();
+  fetchAvailability();
+  fetchReviews();
+};
+
+const handleVisibility = () => {
+  if (document.visibilityState === 'visible') {
+    refreshAll();
+  }
+};
+
+onMounted(() => {
+  refreshAll();
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      fetchAvailability();
+      fetchReviews();
+    }
+  }, 10000);
+  document.addEventListener('visibilitychange', handleVisibility);
+
+  // Automatic review pop-up in public view only (once per session)
+  if (typeof window !== 'undefined' && !sessionStorage.getItem('burgundy_review_popup_seen')) {
+    autoReviewTimer = setTimeout(() => {
+      if (!isReservationModalOpen.value && !isAvailabilityModalOpen.value && !isMyBookingsModalOpen.value) {
+        isReviewModalOpen.value = true;
+        sessionStorage.setItem('burgundy_review_popup_seen', '1');
+      }
+    }, 4500);
+  }
 });
+
+onBeforeUnmount(() => {
+  if (pollTimer) clearInterval(pollTimer);
+  if (autoReviewTimer) clearTimeout(autoReviewTimer);
+  document.removeEventListener('visibilitychange', handleVisibility);
+});
+
+const closeReviewModal = () => {
+  isReviewModalOpen.value = false;
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('burgundy_review_popup_seen', '1');
+  }
+};
 
 const openReservationModal = (suiteTypeId?: number) => {
   if (suiteTypeId) {
@@ -190,5 +281,6 @@ const handleProceedToBook = (suiteTypeId: number, checkIn: string, checkOut: str
 
 const handleBookingSuccess = () => {
   fetchRoomTypes();
+  fetchAvailability();
 };
 </script>

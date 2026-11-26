@@ -48,7 +48,7 @@
                 : 'text-white/70 hover:text-white',
             ]"
           >
-            Occupied ({{ occupiedCount }})
+            Not Available ({{ occupiedCount }})
           </button>
           <button
             type="button"
@@ -60,11 +60,12 @@
                 : 'text-white/70 hover:text-white',
             ]"
           >
-            Maintenance ({{ maintenanceCount }})
+            Under Maintenance ({{ maintenanceCount }})
           </button>
         </div>
 
         <button
+          v-if="canAddSuite"
           type="button"
           @click="$emit('open-add-suite')"
           class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#5A1C2A] hover:bg-[#6D2233] text-[#E5C378] border border-[#E5C378]/30 text-xs font-semibold shadow-sm transition-colors cursor-pointer"
@@ -119,14 +120,14 @@
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-500/40 shadow-xs"
             >
               <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              <span>Occupied</span>
+              <span>Not Available</span>
             </span>
             <span
               v-else
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-950/80 text-amber-300 border border-amber-500/40"
             >
               <Wrench class="w-3 h-3" />
-              <span>Maintenance</span>
+              <span>Under Maintenance</span>
             </span>
           </div>
         </div>
@@ -159,8 +160,8 @@
             class="px-3 py-1.5 rounded-lg bg-[#240A10] border border-[#5A1C2A] text-white text-xs font-medium focus:outline-none focus:border-[#E5C378] cursor-pointer disabled:opacity-50"
           >
             <option value="available" class="bg-[#240A10] text-white">Set Available</option>
-            <option value="occupied" class="bg-[#240A10] text-white">Set Occupied</option>
-            <option value="maintenance" class="bg-[#240A10] text-white">Set Maintenance</option>
+            <option value="occupied" class="bg-[#240A10] text-white">Set Not Available</option>
+            <option value="maintenance" class="bg-[#240A10] text-white">Set Under Maintenance</option>
           </select>
         </div>
       </div>
@@ -172,9 +173,15 @@
 import { ref, computed } from 'vue';
 import { Layers, CheckCircle, Wrench, Plus } from 'lucide-vue-next';
 
-const props = defineProps<{
-  rooms: any[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    rooms: any[];
+    canAddSuite?: boolean;
+  }>(),
+  {
+    canAddSuite: true,
+  }
+);
 
 const emit = defineEmits<{
   (e: 'status-change', roomId: number, status: string): void;

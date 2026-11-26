@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -23,9 +23,17 @@ import {
   AuthenticatedAdmin,
   RoomAvailabilityResult,
   RoomAvailabilityResponse,
+  GuestReview,
+  NewReviewRequest,
+  RoleRecord,
+  PositionRecord,
+  BookingStatusRecord,
 } from '../types/database';
 
 interface DatabaseData {
+  ROLE?: RoleRecord[];
+  POSITION?: PositionRecord[];
+  BOOKING_STATUS?: BookingStatusRecord[];
   USER_ACCOUNT: UserAccount[];
   STAFF_DETAILS: StaffDetails[];
   GUEST_DETAILS: GuestDetails[];
@@ -33,6 +41,7 @@ interface DatabaseData {
   ROOM_DETAILS: RoomDetails[];
   ROOM_BOOKING: RoomBooking[];
   PAYMENT_DETAILS: PaymentDetails[];
+  GUEST_REVIEW?: GuestReview[];
 }
 
 const ROOM_METADATA: Record<
@@ -341,8 +350,19 @@ const INITIAL_DATA: DatabaseData = {
 export class DatabaseService {
   private readonly logger = new Logger(DatabaseService.name);
   private memoryDb: DatabaseData | null = null;
+  // Async mutex queue to serialize concurrent booking transactions (Isolation)
+  private bookingQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly cloudflareService: CloudflareService) {}
+
+  private withBookingLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.bookingQueue.then(fn, fn);
+    this.bookingQueue = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
 
   private getStoreFilePath(): string {
     if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
@@ -423,7 +443,9 @@ export class DatabaseService {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      const tmpPath = `${filePath}.${process.pid}.tmp`;
+      fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf8');
+      fs.renameSync(tmpPath, filePath);
     } catch (err) {
       this.logger.warn(`Could not persist to file system (operating in-memory): ${(err as Error).message}`);
     }
@@ -508,7 +530,7 @@ export class DatabaseService {
       const roomsOfType = db.ROOM_DETAILS.filter((r) => r.room_type_id === type.room_type_id);
 
       const availableRoomsList = roomsOfType.filter((room) => {
-        if (room.room_status === 'maintenance') return false;
+        if (room.room_status === 'maintenance' || room.room_status === 'under maintenance') return false;
 
         // Check if there are overlapping active bookings for this room
         const hasOverlap = db.ROOM_BOOKING.some((b) => {
@@ -711,206 +733,255 @@ export class DatabaseService {
     });
   }
 
-  public async createBooking(req: NewBookingRequest): Promise<BookingWithDetails> {
-    const db = this.readDb();
+  public createBooking(req: NewBookingRequest): Promise<BookingWithDetails> {
+    return this.withBookingLock(async () => {
+      const db = this.readDb();
 
-    // 1. Locate available room of this type
-    const availableRoom = db.ROOM_DETAILS.find(
-      (r) => r.room_type_id === req.room_type_id && r.room_status === 'available'
-    ) || db.ROOM_DETAILS.find((r) => r.room_type_id === req.room_type_id);
-
-    if (!availableRoom) {
-      throw new Error('No physical rooms mapped for this suite type');
-    }
-
-    const roomType = db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === req.room_type_id);
-    if (!roomType) {
-      throw new Error('Selected Suite Type does not exist');
-    }
-
-    // 2. Compute nights and total amount
-    const inDate = new Date(req.check_in_date);
-    const outDate = new Date(req.check_out_date);
-    const diffDays = Math.max(1, Math.ceil((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)));
-    const totalAmount = diffDays * roomType.rate_per_night;
-
-    // 3. Find or Create Guest User Account
-    const sanitizedFirst = (req.guest_first_name || 'Guest').trim();
-    const sanitizedLast = (req.guest_last_name || 'Resident').trim();
-    const sanitizedEmail = (req.guest_email || '').trim().toLowerCase();
-    const sanitizedPhone = (req.guest_contact_number || '').trim();
-    const sanitizedAddress = (req.guest_address || 'Burgundy Haven Estate').trim();
-    const sanitizedNat = (req.guest_nationality || 'International').trim();
-    const sanitizedCivil = (req.guest_civil_status || 'Single').trim();
-    const sanitizedBirth = (req.guest_birth_date || '1990-01-01').trim();
-
-    let guestUser = db.GUEST_DETAILS.find(
-      (g) => g.email_address.toLowerCase() === sanitizedEmail
-    );
-    let userId: number;
-    let isNewUser = false;
-
-    if (!guestUser) {
-      isNewUser = true;
-      const maxUserId = db.USER_ACCOUNT.reduce((max, u) => Math.max(max, u.user_id), 0);
-      userId = maxUserId + 1;
-
-      const newUserAccount: UserAccount = {
-        user_id: userId,
-        user_name: `guest_${sanitizedFirst.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}`,
-        password_hash: 'guest_unregistered',
-        user_role: 'guest',
-        acc_status: 'active',
-        created_date: new Date().toISOString(),
-      };
-      db.USER_ACCOUNT.push(newUserAccount);
-
-      guestUser = {
-        user_id: userId,
-        first_name: sanitizedFirst,
-        last_name: sanitizedLast,
-        birth_date: sanitizedBirth,
-        nationality: sanitizedNat,
-        civil_status: sanitizedCivil,
-        contact_number: sanitizedPhone,
-        email_address: sanitizedEmail,
-        address: sanitizedAddress,
-      };
-      db.GUEST_DETAILS.push(guestUser);
-    } else {
-      userId = guestUser.user_id;
-      // Overwrite with latest inputted public guest details
-      guestUser.first_name = sanitizedFirst;
-      guestUser.last_name = sanitizedLast;
-      guestUser.contact_number = sanitizedPhone;
-      guestUser.address = sanitizedAddress;
-      if (req.guest_birth_date) guestUser.birth_date = sanitizedBirth;
-      if (req.guest_nationality) guestUser.nationality = sanitizedNat;
-      if (req.guest_civil_status) guestUser.civil_status = sanitizedCivil;
-    }
-
-    // 4. Create Room Booking
-    const maxBookingId = Math.max(
-      db.ROOM_BOOKING.reduce((max, b) => Math.max(max, b.booking_id), 0),
-      db.PAYMENT_DETAILS.reduce((max, p) => Math.max(max, p.booking_id), 0)
-    );
-    const newBookingId = maxBookingId + 1;
-
-    const newBooking: RoomBooking = {
-      booking_id: newBookingId,
-      user_id: userId,
-      room_id: availableRoom.room_id,
-      booking_date: new Date().toISOString().split('T')[0],
-      check_in_date: req.check_in_date,
-      check_out_date: req.check_out_date,
-      total_amount: totalAmount,
-      booking_status: 'checked-in',
-    };
-    db.ROOM_BOOKING.push(newBooking);
-
-    // 5. Create Payment Details
-    const maxPaymentId = db.PAYMENT_DETAILS.reduce((max, p) => Math.max(max, p.payment_id), 0);
-    const newPaymentId = maxPaymentId + 1;
-
-    const newPayment: PaymentDetails = {
-      payment_id: newPaymentId,
-      booking_id: newBookingId,
-      payment_method: req.payment_method || 'Visa Private Platinum',
-      amount: totalAmount,
-      payment_status: 'paid',
-      payment_date: new Date().toISOString(),
-    };
-    db.PAYMENT_DETAILS.push(newPayment);
-
-    // 6. Mark physical room as occupied
-    availableRoom.room_status = 'occupied';
-    this.writeDb(db);
-
-    // 7. Sync to Cloudflare D1 if configured
-    if (this.cloudflareService.isCloudflareD1Configured()) {
-      try {
-        const batchStatements = [];
-
-        if (isNewUser) {
-          batchStatements.push({
-            sql: `INSERT OR REPLACE INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, ?, ?, ?, ?);`,
-            params: [userId, `guest_${sanitizedFirst.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}`, 'guest_unregistered', 'guest', 'active', new Date().toISOString()],
-          });
-          batchStatements.push({
-            sql: `INSERT OR REPLACE INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationality, civil_status, contact_number, email_address, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-            params: [
-              userId,
-              guestUser.first_name,
-              guestUser.last_name,
-              guestUser.birth_date,
-              guestUser.nationality,
-              guestUser.civil_status,
-              guestUser.contact_number,
-              guestUser.email_address,
-              guestUser.address,
-            ],
-          });
-        } else {
-          batchStatements.push({
-            sql: `UPDATE GUEST_DETAILS SET first_name = ?, last_name = ?, contact_number = ?, address = ?, nationality = ?, civil_status = ?, birth_date = ? WHERE user_id = ?;`,
-            params: [
-              guestUser.first_name,
-              guestUser.last_name,
-              guestUser.contact_number,
-              guestUser.address,
-              guestUser.nationality,
-              guestUser.civil_status,
-              guestUser.birth_date,
-              userId,
-            ],
-          });
-        }
-
-        batchStatements.push({
-          sql: `INSERT OR REPLACE INTO ROOM_BOOKING (booking_id, user_id, room_id, booking_date, check_in_date, check_out_date, total_amount, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-          params: [
-            newBookingId,
-            userId,
-            availableRoom.room_id,
-            newBooking.booking_date,
-            newBooking.check_in_date,
-            newBooking.check_out_date,
-            newBooking.total_amount,
-            'checked-in',
-          ],
-        });
-
-        batchStatements.push({
-          sql: `INSERT OR REPLACE INTO PAYMENT_DETAILS (payment_id, booking_id, payment_method, amount, payment_status, payment_date) VALUES (?, ?, ?, ?, ?, ?);`,
-          params: [
-            newPaymentId,
-            newBookingId,
-            newPayment.payment_method,
-            newPayment.amount,
-            'paid',
-            newPayment.payment_date,
-          ],
-        });
-
-        batchStatements.push({
-          sql: `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ?;`,
-          params: [availableRoom.room_id],
-        });
-
-        await this.cloudflareService.batchCloudflareD1(batchStatements);
-        this.logger.log(`Synced reservation #${newBookingId} (${sanitizedEmail}) to Cloudflare D1 successfully`);
-      } catch (err) {
-        this.logger.warn(`Cloudflare D1 booking sync warning: ${(err as Error).message}`);
+      // Consistency: validate suite type and stay dates
+      const roomType = db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === req.room_type_id);
+      if (!roomType) {
+        throw new BadRequestException('Selected Suite Type does not exist');
       }
-    }
 
-    return {
-      ...newBooking,
-      guest: guestUser,
-      room: availableRoom,
-      room_type: roomType,
-      payment: newPayment,
-    };
+      const inDate = new Date(req.check_in_date);
+      const outDate = new Date(req.check_out_date);
+      if (isNaN(inDate.getTime()) || isNaN(outDate.getTime()) || outDate <= inDate) {
+        throw new BadRequestException('Check-out date must be after check-in date.');
+      }
+
+      // Isolation & Consistency: find an actually available room with no overlapping active bookings
+      const candidateRooms = db.ROOM_DETAILS.filter((r) => {
+        if (r.room_type_id !== req.room_type_id) return false;
+        if (r.room_status !== 'available') return false;
+
+        const hasOverlap = db.ROOM_BOOKING.some((b) => {
+          if (b.room_id !== r.room_id) return false;
+          if (b.booking_status === 'cancelled' || b.booking_status === 'completed') return false;
+          const bIn = new Date(b.check_in_date).getTime();
+          const bOut = new Date(b.check_out_date).getTime();
+          return bIn < outDate.getTime() && bOut > inDate.getTime();
+        });
+        return !hasOverlap;
+      });
+
+      if (candidateRooms.length === 0) {
+        throw new ConflictException(
+          'Sorry, no rooms are available for this suite. The last available room may have just been booked by another guest.'
+        );
+      }
+
+      // Atomicity: claim room in D1 conditionally if D1 is configured
+      let availableRoom = candidateRooms[0];
+      let d1ClaimedRoomId: number | null = null;
+      if (this.cloudflareService.isCloudflareD1Configured()) {
+        let claimed = false;
+        for (const candidate of candidateRooms) {
+          const claimRes = await this.cloudflareService.queryCloudflareD1(
+            `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ? AND room_status = 'available';`,
+            [candidate.room_id]
+          );
+          if ((claimRes.changes || 0) === 1) {
+            availableRoom = candidate;
+            d1ClaimedRoomId = candidate.room_id;
+            claimed = true;
+            break;
+          } else {
+            // Local cache was stale relative to D1
+            candidate.room_status = 'occupied';
+          }
+        }
+        if (!claimed) {
+          this.writeDb(db);
+          throw new ConflictException(
+            'Sorry, the last available room for this suite was just booked by another guest.'
+          );
+        }
+      }
+
+      // 2. Compute nights and total amount
+      const diffDays = Math.max(1, Math.ceil((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const totalAmount = diffDays * roomType.rate_per_night;
+
+      // 3. Find or Create Guest User Account
+      const sanitizedFirst = (req.guest_first_name || 'Guest').trim();
+      const sanitizedLast = (req.guest_last_name || 'Resident').trim();
+      const sanitizedEmail = (req.guest_email || '').trim().toLowerCase();
+      const sanitizedPhone = (req.guest_contact_number || '').trim();
+      const sanitizedAddress = (req.guest_address || 'Burgundy Haven Estate').trim();
+      const sanitizedNat = (req.guest_nationality || 'International').trim();
+      const sanitizedCivil = (req.guest_civil_status || 'Single').trim();
+      const sanitizedBirth = (req.guest_birth_date || '1990-01-01').trim();
+
+      let guestUser = db.GUEST_DETAILS.find(
+        (g) => g.email_address.toLowerCase() === sanitizedEmail
+      );
+      let userId: number;
+      let isNewUser = false;
+
+      if (!guestUser) {
+        isNewUser = true;
+        const maxUserId = db.USER_ACCOUNT.reduce((max, u) => Math.max(max, u.user_id), 0);
+        userId = maxUserId + 1;
+
+        const newUserAccount: UserAccount = {
+          user_id: userId,
+          user_name: `guest_${sanitizedFirst.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}`,
+          password_hash: 'guest_unregistered',
+          user_role: 'guest',
+          acc_status: 'active',
+          created_date: new Date().toISOString(),
+        };
+        db.USER_ACCOUNT.push(newUserAccount);
+
+        guestUser = {
+          user_id: userId,
+          first_name: sanitizedFirst,
+          last_name: sanitizedLast,
+          birth_date: sanitizedBirth,
+          nationality: sanitizedNat,
+          civil_status: sanitizedCivil,
+          contact_number: sanitizedPhone,
+          email_address: sanitizedEmail,
+          address: sanitizedAddress,
+        };
+        db.GUEST_DETAILS.push(guestUser);
+      } else {
+        userId = guestUser.user_id;
+        guestUser.first_name = sanitizedFirst;
+        guestUser.last_name = sanitizedLast;
+        guestUser.contact_number = sanitizedPhone;
+        guestUser.address = sanitizedAddress;
+        if (req.guest_birth_date) guestUser.birth_date = sanitizedBirth;
+        if (req.guest_nationality) guestUser.nationality = sanitizedNat;
+        if (req.guest_civil_status) guestUser.civil_status = sanitizedCivil;
+      }
+
+      // 4. Create Room Booking & Payment
+      const maxBookingId = Math.max(
+        db.ROOM_BOOKING.reduce((max, b) => Math.max(max, b.booking_id), 0),
+        db.PAYMENT_DETAILS.reduce((max, p) => Math.max(max, p.booking_id), 0)
+      );
+      const newBookingId = maxBookingId + 1;
+
+      const newBooking: RoomBooking = {
+        booking_id: newBookingId,
+        guest_id: userId,
+        user_id: userId,
+        room_id: availableRoom.room_id,
+        booking_date: new Date().toISOString().split('T')[0],
+        check_in_date: req.check_in_date,
+        check_out_date: req.check_out_date,
+        total_amount: totalAmount,
+        booking_status_id: 2,
+        booking_status: 'checked-in',
+      };
+      db.ROOM_BOOKING.push(newBooking);
+
+      const maxPaymentId = db.PAYMENT_DETAILS.reduce((max, p) => Math.max(max, p.payment_id), 0);
+      const newPaymentId = maxPaymentId + 1;
+
+      const newPayment: PaymentDetails = {
+        payment_id: newPaymentId,
+        booking_id: newBookingId,
+        payment_method: req.payment_method || 'Visa Private Platinum',
+        amount: totalAmount,
+        payment_status: 'paid',
+        payment_date: new Date().toISOString(),
+      };
+      db.PAYMENT_DETAILS.push(newPayment);
+
+      // 5. Sync to Cloudflare D1 if configured (with compensating rollback on failure)
+      if (this.cloudflareService.isCloudflareD1Configured()) {
+        try {
+          const batchStatements = [];
+
+          if (isNewUser) {
+            batchStatements.push({
+              sql: `INSERT OR REPLACE INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, ?, ?, ?, ?);`,
+              params: [userId, `guest_${sanitizedFirst.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}`, 'guest_unregistered', 'guest', 'active', new Date().toISOString()],
+            });
+            batchStatements.push({
+              sql: `INSERT OR REPLACE INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationality, civil_status, contact_number, email_address, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+              params: [
+                userId,
+                guestUser.first_name,
+                guestUser.last_name,
+                guestUser.birth_date,
+                guestUser.nationality,
+                guestUser.civil_status,
+                guestUser.contact_number,
+                guestUser.email_address,
+                guestUser.address,
+              ],
+            });
+          } else {
+            batchStatements.push({
+              sql: `UPDATE GUEST_DETAILS SET first_name = ?, last_name = ?, contact_number = ?, address = ?, nationality = ?, civil_status = ?, birth_date = ? WHERE user_id = ?;`,
+              params: [
+                guestUser.first_name,
+                guestUser.last_name,
+                guestUser.contact_number,
+                guestUser.address,
+                guestUser.nationality,
+                guestUser.civil_status,
+                guestUser.birth_date,
+                userId,
+              ],
+            });
+          }
+
+          batchStatements.push({
+            sql: `INSERT OR REPLACE INTO ROOM_BOOKING (booking_id, user_id, room_id, booking_date, check_in_date, check_out_date, total_amount, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+            params: [
+              newBookingId,
+              userId,
+              availableRoom.room_id,
+              newBooking.booking_date,
+              newBooking.check_in_date,
+              newBooking.check_out_date,
+              newBooking.total_amount,
+              'checked-in',
+            ],
+          });
+
+          batchStatements.push({
+            sql: `INSERT OR REPLACE INTO PAYMENT_DETAILS (payment_id, booking_id, payment_method, amount, payment_status, payment_date) VALUES (?, ?, ?, ?, ?, ?);`,
+            params: [
+              newPaymentId,
+              newBookingId,
+              newPayment.payment_method,
+              newPayment.amount,
+              'paid',
+              newPayment.payment_date,
+            ],
+          });
+
+          await this.cloudflareService.batchCloudflareD1(batchStatements);
+          this.logger.log(`Synced reservation #${newBookingId} (${sanitizedEmail}) to Cloudflare D1 successfully`);
+        } catch (err) {
+          // Atomicity rollback: release claimed room in D1 & discard local mutations
+          if (d1ClaimedRoomId !== null) {
+            await this.cloudflareService
+              .queryCloudflareD1(`UPDATE ROOM_DETAILS SET room_status = 'available' WHERE room_id = ?;`, [d1ClaimedRoomId])
+              .catch(() => null);
+          }
+          this.memoryDb = null;
+          throw new Error(`Reservation transaction rolled back: ${(err as Error).message}`);
+        }
+      }
+
+      // 6. Commit local state atomically (Durability)
+      availableRoom.room_status = 'occupied';
+      this.writeDb(db);
+
+      return {
+        ...newBooking,
+        guest: guestUser,
+        room: availableRoom,
+        room_type: roomType,
+        payment: newPayment,
+      };
+    });
   }
 
   public async processCheckOut(bookingId: number): Promise<BookingWithDetails | null> {
@@ -1380,7 +1451,7 @@ export class DatabaseService {
       return {
         user_id: user.user_id,
         user_name: user.user_name,
-        user_role: 'admin',
+        user_role: user.user_role === 'staff' ? 'staff' : 'admin',
         first_name: staff?.first_name || 'Executive',
         last_name: staff?.last_name || 'Admin',
         position: staff?.position || 'General Manager',
@@ -1397,5 +1468,135 @@ export class DatabaseService {
         contact_number: '+63 917 555 0101',
       };
     }
+  }
+
+  // -------------------------------------------------------------
+  // GUEST REVIEWS & FEEDBACK (SERVICE & ROOMS)
+  // -------------------------------------------------------------
+  public getReviews(roomTypeId?: number, targetType?: string) {
+    const db = this.readDb();
+    let list = Array.isArray(db.GUEST_REVIEW) ? [...db.GUEST_REVIEW] : [];
+
+    list = list.map((rev) => {
+      const rt = rev.room_type_id
+        ? db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === rev.room_type_id)
+        : null;
+      return {
+        ...rev,
+        room_type: rt?.room_type || rev.room_type || (rev.target_type === 'service' ? 'Resort Service' : 'All Suites'),
+      };
+    });
+
+    if (roomTypeId && !isNaN(roomTypeId)) {
+      list = list.filter((r) => r.room_type_id === roomTypeId);
+    }
+    if (targetType && targetType !== 'all') {
+      list = list.filter((r) => r.target_type === targetType);
+    }
+
+    list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const total = list.length;
+    const avg = (vals: number[]) =>
+      vals.length > 0 ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1)) : 0;
+
+    return {
+      reviews: list,
+      summary: {
+        total_count: total,
+        average_overall: avg(list.map((r) => r.overall_rating)),
+        average_room: avg(list.map((r) => r.room_rating)),
+        average_service: avg(list.map((r) => r.service_rating)),
+      },
+    };
+  }
+
+  public async createReview(req: NewReviewRequest): Promise<GuestReview> {
+    const db = this.readDb();
+    if (!Array.isArray(db.GUEST_REVIEW)) db.GUEST_REVIEW = [];
+
+    const maxId = db.GUEST_REVIEW.reduce((m, r) => Math.max(m, r.review_id), 0);
+    const overall = Math.round((req.room_rating + req.service_rating) / 2);
+    const rt = req.room_type_id
+      ? db.ROOM_TYPE_DETAILS.find((t) => t.room_type_id === Number(req.room_type_id))
+      : null;
+
+    const review: GuestReview = {
+      review_id: maxId + 1,
+      booking_id: req.booking_id ? Number(req.booking_id) : null,
+      room_type_id: rt ? rt.room_type_id : null,
+      room_type: rt ? rt.room_type : 'Resort Service',
+      target_type: req.target_type || (rt ? 'both' : 'service'),
+      guest_name: req.guest_name,
+      guest_email: req.guest_email,
+      room_rating: req.room_rating,
+      service_rating: req.service_rating,
+      overall_rating: overall,
+      comment: req.comment,
+      staff_reply: null,
+      replied_by: null,
+      replied_at: null,
+      created_at: new Date().toISOString(),
+    };
+
+    db.GUEST_REVIEW.unshift(review);
+    this.writeDb(db);
+
+    if (this.cloudflareService.isCloudflareD1Configured()) {
+      try {
+        await this.cloudflareService.queryCloudflareD1(
+          `INSERT INTO GUEST_REVIEW (review_id, booking_id, room_type_id, target_type, guest_name, guest_email, room_rating, service_rating, overall_rating, comment, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          [
+            review.review_id,
+            review.booking_id,
+            review.room_type_id,
+            review.target_type,
+            review.guest_name,
+            review.guest_email,
+            review.room_rating,
+            review.service_rating,
+            review.overall_rating,
+            review.comment,
+            review.created_at,
+          ]
+        );
+      } catch (err) {
+        this.logger.warn(`Cloudflare D1 review insert warning: ${(err as Error).message}`);
+      }
+    }
+
+    return review;
+  }
+
+  public async replyToReview(
+    reviewId: number,
+    staffReply: string,
+    repliedBy: string
+  ): Promise<GuestReview | null> {
+    const db = this.readDb();
+    if (!Array.isArray(db.GUEST_REVIEW)) return null;
+
+    const idx = db.GUEST_REVIEW.findIndex((r) => r.review_id === reviewId);
+    if (idx === -1) return null;
+
+    const now = new Date().toISOString();
+    db.GUEST_REVIEW[idx].staff_reply = staffReply;
+    db.GUEST_REVIEW[idx].replied_by = repliedBy;
+    db.GUEST_REVIEW[idx].replied_at = now;
+    this.writeDb(db);
+
+    if (this.cloudflareService.isCloudflareD1Configured()) {
+      try {
+        await this.cloudflareService.queryCloudflareD1(
+          `UPDATE GUEST_REVIEW SET staff_reply = ?, replied_by = ?, replied_at = ? WHERE review_id = ?;`,
+          [staffReply, repliedBy, now, reviewId]
+        );
+      } catch (err) {
+        this.logger.warn(`Cloudflare D1 review reply warning: ${(err as Error).message}`);
+      }
+    }
+
+    return db.GUEST_REVIEW[idx];
   }
 }

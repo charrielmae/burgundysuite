@@ -17,30 +17,80 @@ export function useAuth() {
   const isLoading = useState<boolean>('auth_is_loading', () => true);
   const { request } = useApi();
 
-  const fetchSession = async () => {
+  const getStorageKeys = (portal?: 'admin' | 'staff') => {
+    const scope = portal === 'staff' ? 'staff' : 'admin';
+    return {
+      userKey: `burgundy_${scope}_user`,
+      tokenKey: `burgundy_${scope}_token`,
+    };
+  };
+
+  const fetchSession = async (expectedRole?: 'admin' | 'staff') => {
     isLoading.value = true;
+    const { userKey, tokenKey } = getStorageKeys(expectedRole);
+
     try {
-      // 1. Optimistic session restoration from localStorage for instant loading
+      // 1. Optimistic session restoration from portal-scoped localStorage
       if (typeof window !== 'undefined') {
-        const cachedUser = localStorage.getItem('burgundy_admin_user');
-        const cachedToken = localStorage.getItem('burgundy_admin_token');
+        const cachedUser = localStorage.getItem(userKey);
+        const cachedToken = localStorage.getItem(tokenKey);
         if (cachedUser && cachedToken) {
           try {
-            adminUser.value = JSON.parse(cachedUser);
-            isAuthenticated.value = true;
+            const parsed = JSON.parse(cachedUser);
+            if (!expectedRole || parsed?.user_role === expectedRole) {
+              adminUser.value = parsed;
+              isAuthenticated.value = true;
+              localStorage.setItem('burgundy_admin_token', cachedToken);
+            } else {
+              adminUser.value = null;
+              isAuthenticated.value = false;
+            }
           } catch {}
+        } else {
+          adminUser.value = null;
+          isAuthenticated.value = false;
         }
       }
 
-      // 2. Check Better Auth active session
+      // 2. Check Custom Session API (/api/auth/me)
+      const activeToken =
+        typeof window !== 'undefined' ? localStorage.getItem(tokenKey) : null;
+      const res = await request<{ success: boolean; authenticated: boolean; data: AdminUser | null; token?: string }>(
+        '/api/auth/me',
+        activeToken ? { headers: { Authorization: `Bearer ${activeToken}`, 'X-Admin-Token': activeToken } } : {}
+      );
+
+      if (res && res.authenticated && res.data) {
+        if (expectedRole && res.data.user_role !== expectedRole) {
+          adminUser.value = null;
+          isAuthenticated.value = false;
+          return;
+        }
+        adminUser.value = res.data;
+        isAuthenticated.value = true;
+        if (typeof window !== 'undefined') {
+          if (res.token) {
+            localStorage.setItem(tokenKey, res.token);
+            localStorage.setItem('burgundy_admin_token', res.token);
+          }
+          localStorage.setItem(userKey, JSON.stringify(res.data));
+        }
+        return;
+      }
+
+      // 3. Fallback: Better Auth active session (strictly checked against expectedRole)
       try {
         const baSession = await authClient.getSession();
         if (baSession?.data?.user) {
           const u = baSession.data.user as any;
+          const role: 'admin' | 'staff' = u.role === 'staff' ? 'staff' : 'admin';
+          if (expectedRole && role !== expectedRole) {
+            return;
+          }
           const mappedUser: AdminUser = {
             user_id: 1,
             user_name: u.name || u.email?.split('@')[0] || 'admin',
-            user_role: u.role || 'admin',
+            user_role: role,
             first_name: u.name?.split(' ')[0] || 'Executive',
             last_name: u.name?.split(' ').slice(1).join(' ') || 'Admin',
             position: u.position || 'General Manager',
@@ -50,36 +100,22 @@ export function useAuth() {
           adminUser.value = mappedUser;
           isAuthenticated.value = true;
           if (typeof window !== 'undefined') {
-            localStorage.setItem('burgundy_admin_user', JSON.stringify(mappedUser));
+            localStorage.setItem(userKey, JSON.stringify(mappedUser));
             if (baSession.data.session?.token) {
+              localStorage.setItem(tokenKey, baSession.data.session.token);
               localStorage.setItem('burgundy_admin_token', baSession.data.session.token);
             }
           }
           return;
         }
-      } catch (baErr) {
-        // Better Auth session check failed, fall through to custom session check
-      }
+      } catch {}
 
-      // 3. Fallback: Custom session API (/api/auth/me)
-      const res = await request<{ success: boolean; authenticated: boolean; data: AdminUser | null; token?: string }>(
-        '/api/auth/me'
-      );
-      if (res && res.authenticated && res.data) {
-        adminUser.value = res.data;
-        isAuthenticated.value = true;
-        if (typeof window !== 'undefined') {
-          if (res.token) localStorage.setItem('burgundy_admin_token', res.token);
-          localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
-        }
-      } else {
-        if (typeof window !== 'undefined' && !localStorage.getItem('burgundy_admin_token')) {
-          adminUser.value = null;
-          isAuthenticated.value = false;
-        }
+      if (typeof window !== 'undefined' && !localStorage.getItem(tokenKey)) {
+        adminUser.value = null;
+        isAuthenticated.value = false;
       }
-    } catch (err) {
-      if (typeof window !== 'undefined' && !localStorage.getItem('burgundy_admin_token')) {
+    } catch {
+      if (typeof window !== 'undefined' && !localStorage.getItem(tokenKey)) {
         adminUser.value = null;
         isAuthenticated.value = false;
       }
@@ -88,84 +124,51 @@ export function useAuth() {
     }
   };
 
-  const login = async (identifier: string, password: string, turnstileToken?: string) => {
-    isLoading.value = true;
+  // Note: login() intentionally does NOT toggle page-level isLoading so that
+  // AdminLoginGate / StaffLoginGate stays mounted and displays validation errors.
+  const login = async (
+    identifier: string,
+    password: string,
+    turnstileToken?: string,
+    portal?: 'admin' | 'staff'
+  ) => {
     try {
       const cleanIdentifier = identifier.trim();
-      const email = cleanIdentifier.includes('@')
-        ? cleanIdentifier
-        : `${cleanIdentifier.toLowerCase()}@burgundysuite.com`;
+      const { userKey, tokenKey } = getStorageKeys(portal);
 
-      // 1. Primary: Direct Auth API (/api/auth/login) - validates against live Cloudflare D1 database & staff accounts
-      try {
-        const res = await request<{ success: boolean; data: AdminUser; token?: string; message: string }>(
-          '/api/auth/login',
-          {
-            method: 'POST',
-            body: JSON.stringify({ username: cleanIdentifier, password, turnstileToken }),
-          }
-        );
+      const res = await request<{ success: boolean; data: AdminUser; token?: string; message: string }>(
+        '/api/auth/login',
+        {
+          method: 'POST',
+          body: JSON.stringify({ username: cleanIdentifier, password, turnstileToken, portal }),
+        }
+      );
 
-        if (res?.success && res?.data) {
-          if (typeof window !== 'undefined') {
-            if (res.token) {
-              localStorage.setItem('burgundy_admin_token', res.token);
-            }
-            localStorage.setItem('burgundy_admin_user', JSON.stringify(res.data));
+      if (res?.success && res?.data) {
+        if (typeof window !== 'undefined') {
+          if (res.token) {
+            localStorage.setItem(tokenKey, res.token);
+            localStorage.setItem('burgundy_admin_token', res.token);
           }
-          adminUser.value = res.data;
-          isAuthenticated.value = true;
-          return { success: true, user: res.data };
+          localStorage.setItem(userKey, JSON.stringify(res.data));
         }
-      } catch (loginErr: any) {
-        // If 401 Unauthorized, we know credentials were rejected by D1/server
-        if (loginErr?.statusCode === 401 || loginErr?.message?.includes('Invalid credentials')) {
-          return { success: false, error: 'Invalid credentials. Please verify your username and password.' };
-        }
+        adminUser.value = res.data;
+        isAuthenticated.value = true;
+        return { success: true, user: res.data };
       }
 
-      // 2. Fallback: Better Auth Sentinel client signIn
-      try {
-        const baRes = await authClient.signIn.email({
-          email,
-          password,
-        });
-
-        if (baRes?.data?.user) {
-          const u = baRes.data.user as any;
-          const mappedUser: AdminUser = {
-            user_id: 1,
-            user_name: u.name || cleanIdentifier,
-            user_role: u.role || 'admin',
-            first_name: u.name?.split(' ')[0] || cleanIdentifier,
-            last_name: u.name?.split(' ').slice(1).join(' ') || 'Executive',
-            position: u.position || 'Executive Management',
-            contact_number: '+63 917 555 8822',
-            email: u.email,
-          };
-
-          if (typeof window !== 'undefined') {
-            const token = (baRes.data as any)?.token || (baRes.data as any)?.session?.token;
-            if (token) {
-              localStorage.setItem('burgundy_admin_token', token);
-            }
-            localStorage.setItem('burgundy_admin_user', JSON.stringify(mappedUser));
-          }
-          adminUser.value = mappedUser;
-          isAuthenticated.value = true;
-          return { success: true, user: mappedUser };
-        }
-      } catch (baErr) {}
-
       return { success: false, error: 'Authentication failed. Please verify credentials.' };
-    } catch (err) {
-      return { success: false, error: (err as Error).message || 'Authentication error.' };
-    } finally {
-      isLoading.value = false;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Invalid credentials. Please verify your username and password.',
+      };
     }
   };
 
-  const logout = async () => {
+  const logout = async (portal?: 'admin' | 'staff') => {
+    const scope = portal || (adminUser.value?.user_role === 'staff' ? 'staff' : 'admin');
+    const { userKey, tokenKey } = getStorageKeys(scope);
     try {
       await Promise.allSettled([
         authClient.signOut(),
@@ -173,6 +176,8 @@ export function useAuth() {
       ]);
     } finally {
       if (typeof window !== 'undefined') {
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(userKey);
         localStorage.removeItem('burgundy_admin_token');
         localStorage.removeItem('burgundy_admin_user');
       }

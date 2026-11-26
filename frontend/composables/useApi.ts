@@ -40,7 +40,11 @@ export function useApi() {
     }
 
     if (!response.ok) {
-      throw new Error(data.message || data.error || data.statusMessage || `HTTP ${response.status}: ${response.statusText}`);
+      const err: any = new Error(
+        data.message || data.error || data.statusMessage || `HTTP ${response.status}: ${response.statusText}`
+      );
+      err.statusCode = response.status;
+      throw err;
     }
 
     return data as T;

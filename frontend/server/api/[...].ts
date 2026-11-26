@@ -51,6 +51,16 @@ function verifySessionToken(token: string): any {
 
 // In-memory or bundled data store loader
 let cachedDb: any = null;
+let nitroBookingQueue: Promise<void> = Promise.resolve();
+
+function withNitroBookingLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = nitroBookingQueue.then(fn, fn);
+  nitroBookingQueue = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
 const TMP_DB_PATH = path.join(os.tmpdir(), 'burgundy_store.json');
 
 const CANDIDATE_PATHS = [
@@ -69,7 +79,7 @@ function loadStore(): any {
       cachedDb = JSON.parse(fs.readFileSync(TMP_DB_PATH, 'utf8'));
       return cachedDb;
     }
-  } catch {}
+  } catch { }
 
   // 2. Read from repo static JSON store
   for (const p of CANDIDATE_PATHS) {
@@ -78,7 +88,7 @@ function loadStore(): any {
         cachedDb = JSON.parse(fs.readFileSync(p, 'utf8'));
         return cachedDb;
       }
-    } catch {}
+    } catch { }
   }
 
   // 3. Fallback defaults
@@ -206,7 +216,7 @@ function saveStore(data: any): void {
   // Write to OS tmp path
   try {
     fs.writeFileSync(TMP_DB_PATH, jsonStr, 'utf8');
-  } catch {}
+  } catch { }
 
   // Write to repository static paths if writable
   for (const p of CANDIDATE_PATHS) {
@@ -214,7 +224,7 @@ function saveStore(data: any): void {
       if (fs.existsSync(p)) {
         fs.writeFileSync(p, jsonStr, 'utf8');
       }
-    } catch {}
+    } catch { }
   }
 }
 
@@ -397,7 +407,7 @@ export default defineEventHandler(async (event) => {
       if (Array.isArray(d1Rooms) && d1Rooms.length > 0) {
         return { success: true, data: d1Rooms };
       }
-    } catch {}
+    } catch { }
 
     const rooms = (db.ROOM_DETAILS || []).map((r: any) => {
       const type = (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === r.room_type_id);
@@ -430,7 +440,7 @@ export default defineEventHandler(async (event) => {
       try {
         const { updateRoomStatusInD1 } = await import('../utils/d1');
         await updateRoomStatusInD1(roomId, status);
-      } catch {}
+      } catch { }
 
       // Update in local store
       const room = (db.ROOM_DETAILS || []).find((r: any) => r.room_id === roomId);
@@ -511,49 +521,121 @@ export default defineEventHandler(async (event) => {
     return { success: true, data: bookings };
   }
 
-  // Create Booking (/api/bookings)
+  // Create Booking (/api/bookings) — ACID-compliant with Mutex + Conditional Claim
   if (cleanPath === '/api/bookings' && method === 'POST') {
-    try {
-      const body = await readBody(event).catch(() => ({}));
-
-      // 1. Persist directly to Cloudflare D1 database
-      let createdBooking: any = null;
+    return await withNitroBookingLock(async () => {
       try {
-        const { createBookingInD1 } = await import('../utils/d1');
-        const resD1 = await createBookingInD1(body);
-        if (resD1.success && resD1.data) {
-          createdBooking = resD1.data;
+        const body = await readBody(event).catch(() => ({}));
+        const roomTypeId = Number(body.room_type_id || 1);
+        const checkIn = String(body.check_in_date || new Date().toISOString().split('T')[0]);
+        const checkOut = String(body.check_out_date || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]);
+
+        if (new Date(checkOut) <= new Date(checkIn)) {
+          throw createError({ statusCode: 400, statusMessage: 'Check-out date must be after check-in date.' });
         }
-      } catch (d1Err: any) {
-        console.warn('[Cloudflare D1 Booking Create Warning]:', d1Err);
+
+        // 1. Check local store availability first (Isolation & Consistency)
+        const candidateRoom = (db.ROOM_DETAILS || []).find((r: any) => {
+          if (r.room_type_id !== roomTypeId) return false;
+          if (r.room_status !== 'available') return false;
+          const hasOverlap = (db.ROOM_BOOKING || []).some((b: any) => {
+            if (b.room_id !== r.room_id) return false;
+            if (b.booking_status === 'cancelled' || b.booking_status === 'completed') return false;
+            return new Date(b.check_in_date) < new Date(checkOut) && new Date(b.check_out_date) > new Date(checkIn);
+          });
+          return !hasOverlap;
+        });
+
+        // 2. Attempt atomic booking in Cloudflare D1 if configured
+        let createdBooking: any = null;
+        let d1Attempted = false;
+        try {
+          const { createBookingInD1 } = await import('../utils/d1');
+          const resD1 = await createBookingInD1(body);
+          if (resD1.conflict) {
+            throw createError({
+              statusCode: 409,
+              statusMessage: resD1.error || 'Sorry, the last available room for this suite was just booked by another guest.',
+            });
+          }
+          if (resD1.success && resD1.data) {
+            createdBooking = resD1.data;
+            d1Attempted = true;
+          }
+        } catch (d1Err: any) {
+          if (d1Err?.statusCode === 409) throw d1Err;
+          console.warn('[Cloudflare D1 Booking Create Warning]:', d1Err);
+        }
+
+        if (!d1Attempted && !candidateRoom) {
+          throw createError({
+            statusCode: 409,
+            statusMessage: 'Sorry, no rooms are available for this suite. The last available room may have just been booked.',
+          });
+        }
+
+        // 3. Atomically commit to local store
+        const targetRoom = candidateRoom || (db.ROOM_DETAILS || []).find((r: any) => r.room_id === createdBooking?.room_id);
+        const roomType = (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === roomTypeId);
+        const nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)));
+        const computedTotal = Number(body.total_amount) || (Number(roomType?.rate_per_night || 250) * nights);
+
+        const maxBookingId = (db.ROOM_BOOKING || []).reduce((m: number, b: any) => Math.max(m, Number(b.booking_id) || 0), 1020);
+        const newId = createdBooking?.booking_id || (maxBookingId + 1);
+        const newBooking = createdBooking || {
+          booking_id: newId,
+          user_id: 10 + newId,
+          room_id: targetRoom.room_id,
+          booking_date: new Date().toISOString().split('T')[0],
+          check_in_date: checkIn,
+          check_out_date: checkOut,
+          total_amount: computedTotal,
+          booking_status: 'checked-in',
+          guest: {
+            user_id: 10 + newId,
+            first_name: body.guest_first_name || 'Guest',
+            last_name: body.guest_last_name || 'Resident',
+            email_address: (body.guest_email || '').toLowerCase(),
+            contact_number: body.guest_contact_number || '',
+            address: body.guest_address || '',
+          },
+          room: { ...targetRoom, room_status: 'occupied' },
+          room_type: roomType,
+        };
+
+        if (targetRoom) {
+          targetRoom.room_status = 'occupied';
+        }
+        if (!Array.isArray(db.ROOM_BOOKING)) db.ROOM_BOOKING = [];
+        db.ROOM_BOOKING.unshift(newBooking);
+
+        if (!Array.isArray(db.PAYMENT_DETAILS)) db.PAYMENT_DETAILS = [];
+        if (newBooking.payment) {
+          db.PAYMENT_DETAILS.unshift(newBooking.payment);
+        } else {
+          const maxPayId = db.PAYMENT_DETAILS.reduce((m: number, p: any) => Math.max(m, Number(p.payment_id) || 0), 500);
+          db.PAYMENT_DETAILS.unshift({
+            payment_id: maxPayId + 1,
+            booking_id: newId,
+            payment_method: body.payment_method || 'Credit Card',
+            amount: computedTotal,
+            payment_status: 'paid',
+            payment_date: new Date().toISOString(),
+          });
+        }
+
+        saveStore(db);
+
+        return {
+          success: true,
+          data: newBooking,
+          message: 'Reservation confirmed successfully and saved to database!',
+        };
+      } catch (err: any) {
+        if (err?.statusCode) throw err;
+        throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to confirm booking.' });
       }
-
-      // 2. Cache in local store for redundancy
-      const newId = createdBooking?.booking_id || ((db.ROOM_BOOKING || []).length + 1020);
-      const newBooking = createdBooking || {
-        booking_id: newId,
-        user_id: 10 + newId,
-        room_id: body.room_id || 1,
-        booking_date: new Date().toISOString().split('T')[0],
-        check_in_date: body.check_in_date || '2026-10-25',
-        check_out_date: body.check_out_date || '2026-10-28',
-        total_amount: Number(body.total_amount) || 55500,
-        booking_status: 'checked-in',
-      };
-
-      if (!Array.isArray(db.ROOM_BOOKING)) db.ROOM_BOOKING = [];
-      db.ROOM_BOOKING.unshift(newBooking);
-      saveStore(db);
-
-      return {
-        success: true,
-        data: newBooking,
-        message: 'Reservation confirmed successfully and saved to database!',
-      };
-    } catch (err: any) {
-      if (err?.statusCode) throw err;
-      throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to confirm booking.' });
-    }
+    });
   }
 
   // Checkout Booking (/api/bookings/:id/checkout)
@@ -602,7 +684,7 @@ export default defineEventHandler(async (event) => {
       if (d1Metrics) {
         return { success: true, data: d1Metrics };
       }
-    } catch {}
+    } catch { }
 
     // 2. Local fallback
     const totalRooms = (db.ROOM_DETAILS || []).length || 8;
@@ -643,7 +725,7 @@ export default defineEventHandler(async (event) => {
       if (Array.isArray(d1Accounts) && d1Accounts.length > 0) {
         return { success: true, data: d1Accounts };
       }
-    } catch {}
+    } catch { }
 
     // 2. Fallback to local store
     const accounts = (db.USER_ACCOUNT || [])
@@ -930,29 +1012,214 @@ export default defineEventHandler(async (event) => {
       if (Array.isArray(d1Payments) && d1Payments.length > 0) {
         return { success: true, data: d1Payments };
       }
-    } catch {}
+    } catch { }
     return { success: true, data: db.PAYMENT_DETAILS || [] };
+  }
+
+  // Guest Reviews & Feedback (/api/reviews)
+  if (cleanPath === '/api/reviews' && method === 'GET') {
+    const query = getQuery(event);
+    const roomTypeId = query.roomTypeId && query.roomTypeId !== 'all' ? Number(query.roomTypeId) : undefined;
+    const targetType = query.targetType && query.targetType !== 'all' ? String(query.targetType) : undefined;
+
+    let reviewsList = Array.isArray(db.GUEST_REVIEW) ? [...db.GUEST_REVIEW] : [];
+    try {
+      const { getReviewsFromD1 } = await import('../utils/d1');
+      const d1Reviews = await getReviewsFromD1();
+      if (Array.isArray(d1Reviews) && d1Reviews.length > 0) {
+        reviewsList = d1Reviews;
+      }
+    } catch { }
+
+    reviewsList = reviewsList.map((rev: any) => {
+      const rt = rev.room_type_id
+        ? (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === Number(rev.room_type_id))
+        : null;
+      return {
+        ...rev,
+        room_type: rt?.room_type || rev.room_type || (rev.target_type === 'service' ? 'Resort Service' : 'All Suites'),
+      };
+    });
+
+    if (roomTypeId && !isNaN(roomTypeId)) {
+      reviewsList = reviewsList.filter((r: any) => Number(r.room_type_id) === roomTypeId);
+    }
+    if (targetType) {
+      reviewsList = reviewsList.filter((r: any) => r.target_type === targetType);
+    }
+
+    reviewsList.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const total = reviewsList.length;
+    const avg = (vals: number[]) =>
+      vals.length > 0 ? Number((vals.reduce((s, v) => s + Number(v || 0), 0) / vals.length).toFixed(1)) : 0;
+
+    return {
+      success: true,
+      data: reviewsList,
+      summary: {
+        total_count: total,
+        average_overall: avg(reviewsList.map((r: any) => r.overall_rating)),
+        average_room: avg(reviewsList.map((r: any) => r.room_rating)),
+        average_service: avg(reviewsList.map((r: any) => r.service_rating)),
+      },
+    };
+  }
+
+  if (cleanPath === '/api/reviews' && method === 'POST') {
+    try {
+      const body = await readBody(event).catch(() => ({}));
+      const guestName = String(body.guest_name || '').trim();
+      const guestEmail = String(body.guest_email || '').trim().toLowerCase();
+      const comment = String(body.comment || '').trim();
+      const roomRating = Math.min(5, Math.max(1, Math.round(Number(body.room_rating || 5))));
+      const serviceRating = Math.min(5, Math.max(1, Math.round(Number(body.service_rating || 5))));
+
+      if (!guestName || !guestEmail || !comment) {
+        throw createError({ statusCode: 400, statusMessage: 'Guest name, email, and feedback comment are required.' });
+      }
+
+      if (!Array.isArray(db.GUEST_REVIEW)) db.GUEST_REVIEW = [];
+      const maxId = db.GUEST_REVIEW.reduce((m: number, r: any) => Math.max(m, Number(r.review_id) || 0), 0);
+      const roomTypeId = body.room_type_id ? Number(body.room_type_id) : null;
+      const rt = roomTypeId
+        ? (db.ROOM_TYPE_DETAILS || []).find((t: any) => t.room_type_id === roomTypeId)
+        : null;
+
+      const newReview = {
+        review_id: maxId + 1,
+        booking_id: body.booking_id ? Number(body.booking_id) : null,
+        room_type_id: rt ? rt.room_type_id : null,
+        room_type: rt ? rt.room_type : 'Resort Service',
+        target_type: body.target_type || (rt ? 'both' : 'service'),
+        guest_name: guestName,
+        guest_email: guestEmail,
+        room_rating: roomRating,
+        service_rating: serviceRating,
+        overall_rating: Math.round((roomRating + serviceRating) / 2),
+        comment,
+        staff_reply: null,
+        replied_by: null,
+        replied_at: null,
+        created_at: new Date().toISOString(),
+      };
+
+      try {
+        const { createReviewInD1 } = await import('../utils/d1');
+        await createReviewInD1(newReview);
+      } catch { }
+
+      db.GUEST_REVIEW.unshift(newReview);
+      saveStore(db);
+
+      return {
+        success: true,
+        message: 'Thank you for sharing your feedback with Burgundy Suite & Resort!',
+        data: newReview,
+      };
+    } catch (err: any) {
+      if (err?.statusCode) throw err;
+      throw createError({ statusCode: 500, statusMessage: err?.message || 'Failed to submit review.' });
+    }
+  }
+
+  const reviewReplyMatch = cleanPath.match(/^\/api\/reviews\/(\d+)\/reply$/);
+  if (reviewReplyMatch && method === 'PATCH') {
+    let token = getCookie(event, SESSION_COOKIE_NAME);
+    if (!token) {
+      const authHeader = getHeader(event, 'authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
+      }
+    }
+    if (!token) {
+      token = getHeader(event, 'x-admin-token')?.trim();
+    }
+
+    let authUser: { userName: string; role: string } | null = null;
+    if (token) {
+      const hmacPayload = verifySessionToken(token);
+      if (hmacPayload && (hmacPayload.role === 'admin' || hmacPayload.role === 'staff')) {
+        authUser = { userName: hmacPayload.userName, role: hmacPayload.role };
+      } else if (token === 'burgundy_master_session_token') {
+        authUser = { userName: 'admin_clara', role: 'admin' };
+      } else if (token.startsWith('burgundy_session_')) {
+        const uid = Number(token.replace('burgundy_session_', ''));
+        const u = (db.USER_ACCOUNT || []).find((acc: any) => Number(acc.user_id) === uid);
+        if (u && (u.user_role === 'admin' || u.user_role === 'staff')) {
+          authUser = { userName: u.user_name, role: u.user_role };
+        }
+      }
+    }
+
+    if (!authUser) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized. Staff or Admin session required.' });
+    }
+
+    const reviewId = Number(reviewReplyMatch[1]);
+    const body = await readBody(event).catch(() => ({}));
+    const staffReply = String(body.staff_reply || '').trim();
+    if (!staffReply) {
+      throw createError({ statusCode: 400, statusMessage: 'Reply message is required.' });
+    }
+
+    const now = new Date().toISOString();
+    const repliedBy = String(body.replied_by || `${authUser.userName} (${authUser.role})`).trim();
+
+    try {
+      const { replyToReviewInD1 } = await import('../utils/d1');
+      await replyToReviewInD1(reviewId, staffReply, repliedBy, now);
+    } catch { }
+
+    const target = (db.GUEST_REVIEW || []).find((r: any) => Number(r.review_id) === reviewId);
+    if (!target) {
+      throw createError({ statusCode: 404, statusMessage: 'Review not found.' });
+    }
+    target.staff_reply = staffReply;
+    target.replied_by = repliedBy;
+    target.replied_at = now;
+    saveStore(db);
+
+    return { success: true, message: 'Response posted successfully.', data: target };
   }
 
   // Room Availability (/api/rooms/availability)
   if (cleanPath === '/api/rooms/availability' && method === 'GET') {
     const query = getQuery(event);
-    const checkIn = (query.check_in as string) || new Date().toISOString().split('T')[0];
-    const checkOut = (query.check_out as string) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const checkIn = (query.checkIn as string) || (query.check_in as string) || new Date().toISOString().split('T')[0];
+    const checkOut = (query.checkOut as string) || (query.check_out as string) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const roomTypeFilter = query.roomTypeId && query.roomTypeId !== 'all' ? Number(query.roomTypeId) : undefined;
     const nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)));
 
     let roomTypesList = db.ROOM_TYPE_DETAILS || [];
+    let roomsList = db.ROOM_DETAILS || [];
     try {
-      const { getRoomTypesFromD1 } = await import('../utils/d1');
-      const d1Types = await getRoomTypesFromD1();
-      if (Array.isArray(d1Types) && d1Types.length > 0) {
-        roomTypesList = d1Types;
-      }
-    } catch {}
+      const { getRoomTypesFromD1, getRoomsFromD1 } = await import('../utils/d1');
+      const [d1Types, d1Rooms] = await Promise.all([getRoomTypesFromD1(), getRoomsFromD1()]);
+      if (Array.isArray(d1Types) && d1Types.length > 0) roomTypesList = d1Types;
+      if (Array.isArray(d1Rooms) && d1Rooms.length > 0) roomsList = d1Rooms;
+    } catch { }
+
+    if (roomTypeFilter && !isNaN(roomTypeFilter)) {
+      roomTypesList = roomTypesList.filter((t: any) => t.room_type_id === roomTypeFilter);
+    }
 
     const results = (roomTypesList || []).map((t: any) => {
-      const typeRooms = (db.ROOM_DETAILS || []).filter((r: any) => r.room_type_id === t.room_type_id);
-      const availableRooms = typeRooms.filter((r: any) => r.room_status === 'available');
+      const typeRooms = roomsList.filter((r: any) => r.room_type_id === t.room_type_id);
+      const availableRooms = typeRooms.filter((r: any) => {
+        if (r.room_status !== 'available') return false;
+        const hasOverlap = (db.ROOM_BOOKING || []).some((b: any) => {
+          if (b.room_id !== r.room_id) return false;
+          if (b.booking_status === 'cancelled' || b.booking_status === 'completed') return false;
+          return new Date(b.check_in_date) < new Date(checkOut) && new Date(b.check_out_date) > new Date(checkIn);
+        });
+        return !hasOverlap;
+      });
+      const maintenanceCount = typeRooms.filter(
+        (r: any) => r.room_status === 'maintenance' || r.room_status === 'under maintenance'
+      ).length;
+      const occupiedCount = typeRooms.filter((r: any) => r.room_status === 'occupied').length;
+
       return {
         room_type_id: t.room_type_id,
         room_type: t.room_type,
@@ -962,9 +1229,11 @@ export default defineEventHandler(async (event) => {
         image_url: t.image_url,
         badge: t.badge,
         features: t.features,
-        total_rooms: typeRooms.length || 2,
-        available_rooms: availableRooms.length || 1,
-        is_available: (availableRooms.length || 1) > 0,
+        total_rooms: typeRooms.length,
+        available_rooms: availableRooms.length,
+        occupied_rooms: occupiedCount,
+        maintenance_rooms: maintenanceCount,
+        is_available: availableRooms.length > 0,
         available_room_numbers: availableRooms.map((r: any) => r.room_number),
         nights,
         total_estimated_rate: t.rate_per_night * nights,
@@ -990,7 +1259,7 @@ export default defineEventHandler(async (event) => {
       const backendBase = process.env.BACKEND_URL.replace(/\/+$/, '');
       const pathWithQuery = event.path.startsWith('/') ? event.path : `/${event.path}`;
       return await proxyRequest(event, `${backendBase}${pathWithQuery}`);
-    } catch {}
+    } catch { }
   }
 
   // Default fallback for any unmatched API

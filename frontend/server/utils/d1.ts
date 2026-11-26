@@ -57,8 +57,14 @@ const ROOM_METADATA: Record<number, { image_url: string; badge: string; features
   },
 };
 
-export async function queryD1<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+export async function executeD1<T = any>(
+  sql: string,
+  params: any[] = []
+): Promise<{ success: boolean; results: T[]; changes: number }> {
   try {
+    if (!D1_CONFIG.accountId || !D1_CONFIG.databaseId || !D1_CONFIG.apiToken) {
+      return { success: false, results: [], changes: 0 };
+    }
     const endpoint = `https://api.cloudflare.com/client/v4/accounts/${D1_CONFIG.accountId}/d1/database/${D1_CONFIG.databaseId}/query`;
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -69,14 +75,24 @@ export async function queryD1<T = any>(sql: string, params: any[] = []): Promise
       body: JSON.stringify({ sql, params }),
     });
     const data = await res.json();
-    if (data.success && data.result?.[0]?.results) {
-      return data.result[0].results as T[];
+    if (data.success && data.result?.[0]) {
+      const first = data.result[0];
+      return {
+        success: true,
+        results: (first.results || []) as T[],
+        changes: Number(first.meta?.changes || 0),
+      };
     }
-    return [];
+    return { success: false, results: [], changes: 0 };
   } catch (err) {
-    console.warn('[Cloudflare D1 Query Warning]:', (err as Error).message);
-    return [];
+    console.warn('[Cloudflare D1 Execute Warning]:', (err as Error).message);
+    return { success: false, results: [], changes: 0 };
   }
+}
+
+export async function queryD1<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  const res = await executeD1<T>(sql, params);
+  return res.results;
 }
 
 // ============================================================================
@@ -397,29 +413,70 @@ export async function createBookingInD1(payload: {
   guest_email?: string;
   guest_address?: string;
   payment_method?: string;
-}): Promise<{ success: boolean; data?: BookingRecord; error?: string }> {
+}): Promise<{ success: boolean; conflict?: boolean; data?: BookingRecord; error?: string }> {
+  let claimedRoomId: number | null = null;
+  let insertedBookingId: number | null = null;
+
   try {
     const roomTypeId = Number(payload.room_type_id || 1);
-    let chosenRoomId = Number(payload.room_id || 0);
+    const checkIn = payload.check_in_date || new Date().toISOString().split('T')[0];
+    const checkOut = payload.check_out_date || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
 
-    // 1. If room_id not provided, find available room with this room_type_id
-    if (!chosenRoomId) {
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      return { success: false, error: 'Check-out date must be after check-in date.' };
+    }
+
+    // 1. Find candidate available rooms (never fall back to occupied/maintenance rooms)
+    let candidateRoomIds: number[] = [];
+    if (payload.room_id) {
+      candidateRoomIds = [Number(payload.room_id)];
+    } else {
       const availRooms = await queryD1<{ room_id: number }>(
-        'SELECT room_id FROM ROOM_DETAILS WHERE room_type_id = ? AND room_status = "available" LIMIT 1;',
-        [roomTypeId]
+        `SELECT r.room_id FROM ROOM_DETAILS r
+         WHERE r.room_type_id = ?
+           AND r.room_status = 'available'
+           AND NOT EXISTS (
+             SELECT 1 FROM ROOM_BOOKING b
+             WHERE b.room_id = r.room_id
+               AND b.booking_status NOT IN ('cancelled', 'completed')
+               AND b.check_in_date < ? AND b.check_out_date > ?
+           );`,
+        [roomTypeId, checkOut, checkIn]
       );
-      if (availRooms.length > 0) {
-        chosenRoomId = availRooms[0].room_id;
-      } else {
-        const anyRoom = await queryD1<{ room_id: number }>(
-          'SELECT room_id FROM ROOM_DETAILS WHERE room_type_id = ? LIMIT 1;',
-          [roomTypeId]
-        );
-        chosenRoomId = anyRoom[0]?.room_id || 1;
+      candidateRoomIds = availRooms.map((r) => r.room_id);
+    }
+
+    if (candidateRoomIds.length === 0) {
+      return {
+        success: false,
+        conflict: true,
+        error: 'Sorry, no rooms are available for this suite. The last available room may have just been booked.',
+      };
+    }
+
+    // 2. ACID Isolation & Atomicity: conditionally claim an available room
+    let chosenRoomId = 0;
+    for (const cid of candidateRoomIds) {
+      const claim = await executeD1(
+        `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ? AND room_status = 'available';`,
+        [cid]
+      );
+      if (claim.success && claim.changes === 1) {
+        chosenRoomId = cid;
+        claimedRoomId = cid;
+        break;
       }
     }
 
-    // 2. Fetch room & type info
+    if (!chosenRoomId) {
+      return {
+        success: false,
+        conflict: true,
+        error: 'Sorry, the last available room for this suite was just booked by another guest.',
+      };
+    }
+
+    // 3. Fetch room & type info
     const roomInfo = await queryD1(
       `SELECT r.room_id, r.room_number, r.floor_number, r.room_status,
               t.room_type_id, t.room_type, t.room_capacity, t.rate_per_night
@@ -432,19 +489,17 @@ export async function createBookingInD1(payload: {
       room_id: chosenRoomId,
       room_number: 101,
       floor_number: 1,
-      room_status: 'available',
+      room_status: 'occupied',
       room_type_id: roomTypeId,
       room_type: 'Deluxe Suite',
       room_capacity: 2,
       rate_per_night: 250,
     };
 
-    const checkIn = payload.check_in_date || new Date().toISOString().split('T')[0];
-    const checkOut = payload.check_out_date || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
     const nights = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)));
     const totalAmount = Number(payload.total_amount) || (Number(roomRow.rate_per_night) * nights) || 1000;
 
-    // 3. User & Guest Details
+    // 4. User & Guest Details
     const email = (payload.guest_email || 'vip.guest@burgundysuite.com').trim().toLowerCase();
     const firstName = (payload.guest_first_name || 'VIP').trim();
     const lastName = (payload.guest_last_name || 'Guest').trim();
@@ -464,51 +519,50 @@ export async function createBookingInD1(payload: {
 
     if (existingGuest.length > 0) {
       userId = existingGuest[0].user_id;
-      // Update contact details
-      await queryD1(
+      await executeD1(
         `UPDATE GUEST_DETAILS SET first_name = ?, last_name = ?, contact_number = ?, address = ? WHERE user_id = ?;`,
         [firstName, lastName, contact, address, userId]
       );
     } else {
       const maxUser = await queryD1<{ max_id: number }>('SELECT MAX(user_id) as max_id FROM USER_ACCOUNT;');
       userId = (Number(maxUser[0]?.max_id) || 30) + 1;
-      const userName = `guest_${firstName.toLowerCase()}_${userId}`;
+      const userName = `guest_${firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}`;
 
-      await queryD1(
+      await executeD1(
         `INSERT INTO USER_ACCOUNT (user_id, user_name, password_hash, user_role, acc_status, created_date) VALUES (?, ?, 'guest_unregistered', 'guest', 'active', ?);`,
         [userId, userName, nowIso]
       );
 
-      await queryD1(
+      await executeD1(
         `INSERT INTO GUEST_DETAILS (user_id, first_name, last_name, birth_date, nationality, civil_status, contact_number, email_address, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [userId, firstName, lastName, birthDate, nationality, civilStatus, contact, email, address]
       );
     }
 
-    // 4. Create Booking
+    // 5. Create Booking & Payment (with rollback on error)
     const maxBook = await queryD1<{ max_id: number }>('SELECT MAX(booking_id) as max_id FROM ROOM_BOOKING;');
     const newBookingId = (Number(maxBook[0]?.max_id) || 1020) + 1;
 
-    await queryD1(
+    const bookRes = await executeD1(
       `INSERT INTO ROOM_BOOKING (booking_id, user_id, room_id, booking_date, check_in_date, check_out_date, total_amount, booking_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'checked-in');`,
       [newBookingId, userId, chosenRoomId, today, checkIn, checkOut, totalAmount]
     );
+    if (!bookRes.success) {
+      throw new Error('Failed to insert ROOM_BOOKING record.');
+    }
+    insertedBookingId = newBookingId;
 
-    // 5. Update room status to occupied
-    await queryD1(
-      `UPDATE ROOM_DETAILS SET room_status = 'occupied' WHERE room_id = ?;`,
-      [chosenRoomId]
-    );
-
-    // 6. Create Payment
     const maxPay = await queryD1<{ max_id: number }>('SELECT MAX(payment_id) as max_id FROM PAYMENT_DETAILS;');
     const newPaymentId = (Number(maxPay[0]?.max_id) || 520) + 1;
     const paymentMethod = payload.payment_method || 'Credit Card (Visa Signature)';
 
-    await queryD1(
+    const payRes = await executeD1(
       `INSERT INTO PAYMENT_DETAILS (payment_id, booking_id, payment_method, amount, payment_status, payment_date) VALUES (?, ?, ?, ?, 'paid', ?);`,
       [newPaymentId, newBookingId, paymentMethod, totalAmount, nowIso]
     );
+    if (!payRes.success) {
+      throw new Error('Failed to insert PAYMENT_DETAILS record.');
+    }
 
     const meta = ROOM_METADATA[roomRow.room_type_id] || ROOM_METADATA[1];
 
@@ -560,6 +614,13 @@ export async function createBookingInD1(payload: {
 
     return { success: true, data: resultRecord };
   } catch (err: any) {
+    // Compensating rollback for Atomicity
+    if (insertedBookingId !== null) {
+      await executeD1(`DELETE FROM ROOM_BOOKING WHERE booking_id = ?;`, [insertedBookingId]).catch(() => null);
+    }
+    if (claimedRoomId !== null) {
+      await executeD1(`UPDATE ROOM_DETAILS SET room_status = 'available' WHERE room_id = ?;`, [claimedRoomId]).catch(() => null);
+    }
     console.warn('[Cloudflare D1 Create Booking Error]:', err?.message || err);
     return { success: false, error: err?.message || 'Failed to create booking in database' };
   }
@@ -753,3 +814,102 @@ export async function getMetricsFromD1(): Promise<any | null> {
     return null;
   }
 }
+
+// ============================================================================
+// GUEST REVIEWS & FEEDBACK (SERVICE & ROOMS)
+// ============================================================================
+
+async function ensureReviewsTableInD1() {
+  await executeD1(`
+    CREATE TABLE IF NOT EXISTS GUEST_REVIEW (
+      review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id INTEGER NULL,
+      room_type_id INTEGER NULL,
+      target_type VARCHAR(20) NOT NULL,
+      guest_name VARCHAR(80) NOT NULL,
+      guest_email VARCHAR(80) NOT NULL,
+      room_rating INTEGER NOT NULL,
+      service_rating INTEGER NOT NULL,
+      overall_rating INTEGER NOT NULL,
+      comment TEXT NOT NULL,
+      staff_reply TEXT NULL,
+      replied_by VARCHAR(80) NULL,
+      replied_at DATETIME NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+export async function getReviewsFromD1(): Promise<any[] | null> {
+  try {
+    await ensureReviewsTableInD1();
+    const rows = await queryD1(
+      `SELECT r.*, t.room_type
+       FROM GUEST_REVIEW r
+       LEFT JOIN ROOM_TYPE_DETAILS t ON r.room_type_id = t.room_type_id
+       ORDER BY r.created_at DESC;`
+    );
+    return rows;
+  } catch {
+    return null;
+  }
+}
+
+export async function createReviewInD1(review: {
+  review_id?: number;
+  booking_id?: number | null;
+  room_type_id?: number | null;
+  target_type: string;
+  guest_name: string;
+  guest_email: string;
+  room_rating: number;
+  service_rating: number;
+  overall_rating: number;
+  comment: string;
+  created_at: string;
+}): Promise<any | null> {
+  try {
+    await ensureReviewsTableInD1();
+    const maxRow = await queryD1<{ max_id: number }>('SELECT MAX(review_id) as max_id FROM GUEST_REVIEW;');
+    const reviewId = review.review_id || (Number(maxRow[0]?.max_id) || 0) + 1;
+    await executeD1(
+      `INSERT INTO GUEST_REVIEW (review_id, booking_id, room_type_id, target_type, guest_name, guest_email, room_rating, service_rating, overall_rating, comment, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        reviewId,
+        review.booking_id ?? null,
+        review.room_type_id ?? null,
+        review.target_type,
+        review.guest_name,
+        review.guest_email,
+        review.room_rating,
+        review.service_rating,
+        review.overall_rating,
+        review.comment,
+        review.created_at,
+      ]
+    );
+    return { ...review, review_id: reviewId };
+  } catch {
+    return null;
+  }
+}
+
+export async function replyToReviewInD1(
+  reviewId: number,
+  staffReply: string,
+  repliedBy: string,
+  repliedAt: string
+): Promise<boolean> {
+  try {
+    await ensureReviewsTableInD1();
+    const res = await executeD1(
+      `UPDATE GUEST_REVIEW SET staff_reply = ?, replied_by = ?, replied_at = ? WHERE review_id = ?;`,
+      [staffReply, repliedBy, repliedAt, reviewId]
+    );
+    return res.success;
+  } catch {
+    return false;
+  }
+}
+

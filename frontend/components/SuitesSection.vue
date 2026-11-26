@@ -51,6 +51,29 @@
                     <Users class="w-3 h-3 text-[#E5C378]" />
                     <span>Up to {{ suite.room_capacity }} Guests</span>
                   </div>
+
+                  <!-- Live Availability Pill -->
+                  <div
+                    v-if="availabilityMap && availabilityMap[suite.room_type_id]"
+                    :class="[
+                      'absolute bottom-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md border text-[10px] font-bold tracking-wider uppercase shadow-sm',
+                      availabilityMap[suite.room_type_id].is_available
+                        ? 'bg-emerald-950/85 border-emerald-400/40 text-emerald-300'
+                        : availabilityMap[suite.room_type_id].maintenance_rooms > 0 && availabilityMap[suite.room_type_id].occupied_rooms === 0
+                        ? 'bg-amber-950/85 border-amber-400/40 text-amber-300'
+                        : 'bg-rose-950/85 border-rose-400/40 text-rose-300',
+                    ]"
+                  >
+                    <span v-if="availabilityMap[suite.room_type_id].is_available">
+                      {{ availabilityMap[suite.room_type_id].available_rooms }} Available
+                    </span>
+                    <span v-else-if="availabilityMap[suite.room_type_id].maintenance_rooms > 0 && availabilityMap[suite.room_type_id].occupied_rooms === 0">
+                      Under Maintenance
+                    </span>
+                    <span v-else>
+                      Not Available
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Card Body -->
@@ -97,10 +120,11 @@
 
                     <button
                       type="button"
+                      :disabled="availabilityMap && availabilityMap[suite.room_type_id] && !availabilityMap[suite.room_type_id].is_available"
                       @click="$emit('book-suite', suite.room_type_id)"
-                      class="px-4 py-2.5 rounded-xl bg-[#2B0E14] text-[#E5C378] text-xs font-bold tracking-wider uppercase hover:bg-[#4A1521] hover:text-white transition-all duration-200 flex items-center gap-1.5 shadow hover:shadow-lg cursor-pointer"
+                      class="px-4 py-2.5 rounded-xl bg-[#2B0E14] text-[#E5C378] text-xs font-bold tracking-wider uppercase hover:bg-[#4A1521] hover:text-white transition-all duration-200 flex items-center gap-1.5 shadow hover:shadow-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      <span>Book Suite</span>
+                      <span>{{ availabilityMap && availabilityMap[suite.room_type_id] && !availabilityMap[suite.room_type_id].is_available ? 'Unavailable' : 'Book Suite' }}</span>
                       <ArrowRight class="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -185,6 +209,7 @@ interface RoomTypeDetails {
 
 const props = defineProps<{
   roomTypes: RoomTypeDetails[];
+  availabilityMap?: Record<number, any>;
 }>();
 
 defineEmits<{

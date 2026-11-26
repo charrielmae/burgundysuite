@@ -15,9 +15,9 @@
       <p class="text-xs font-bold uppercase tracking-[0.25em]">Authenticating Executive Session...</p>
     </div>
 
-    <!-- Login Gate if not authenticated -->
+    <!-- Login Gate if not authenticated as Admin -->
     <AdminLoginGate
-      v-else-if="!isAuthenticated"
+      v-else-if="!isAuthenticated || adminUser?.user_role !== 'admin'"
       @login-success="handleLoginSuccess"
     />
 
@@ -67,6 +67,14 @@
 
         <!-- 5. Payment Audit Logs -->
         <PaymentLogs :payments="payments" />
+
+        <!-- 6. Guest Reviews & Feedback -->
+        <ReviewsPanel
+          :reviews="reviews"
+          :summary="reviewSummary"
+          :can-reply="true"
+          @reply="handleReviewReply"
+        />
       </main>
 
       <!-- Footer -->
@@ -95,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useApi } from '../../composables/useApi';
 
@@ -110,6 +118,7 @@ import PaymentLogs from '../../components/admin/PaymentLogs.vue';
 import AddSuiteModal from '../../components/admin/AddSuiteModal.vue';
 import StaffAccountsModal from '../../components/admin/StaffAccountsModal.vue';
 import CloudflareD1Modal from '../../components/admin/CloudflareD1Modal.vue';
+import ReviewsPanel from '../../components/shared/ReviewsPanel.vue';
 
 const { adminUser, isAuthenticated, isLoading, fetchSession, logout } = useAuth();
 const { request } = useApi();
@@ -127,6 +136,10 @@ const kpis = ref<any>({
 const rooms = ref<any[]>([]);
 const bookings = ref<any[]>([]);
 const payments = ref<any[]>([]);
+const reviews = ref<any[]>([]);
+const reviewSummary = ref<any>({});
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const isAddSuiteModalOpen = ref(false);
 const isAccountsModalOpen = ref(false);
@@ -135,27 +148,49 @@ const toastMessage = ref<string | null>(null);
 
 const loadDashboardData = async () => {
   try {
-    const [kpiRes, roomRes, bookingRes, paymentRes] = await Promise.all([
+    const [kpiRes, roomRes, bookingRes, paymentRes, reviewRes] = await Promise.all([
       request<{ success: boolean; data: any }>('/api/admin/metrics'),
       request<{ success: boolean; data: any[] }>('/api/rooms'),
       request<{ success: boolean; data: any[] }>('/api/bookings'),
       request<{ success: boolean; data: any[] }>('/api/payments'),
+      request<{ success: boolean; data: any[]; summary: any }>('/api/reviews'),
     ]);
 
     if (kpiRes.success) kpis.value = kpiRes.data;
     if (roomRes.success) rooms.value = roomRes.data;
     if (bookingRes.success) bookings.value = bookingRes.data;
     if (paymentRes.success) payments.value = paymentRes.data;
+    if (reviewRes.success) {
+      reviews.value = reviewRes.data || [];
+      reviewSummary.value = reviewRes.summary || {};
+    }
   } catch (err) {
     console.error('Error fetching dashboard data:', err);
   }
 };
 
-onMounted(async () => {
-  await fetchSession();
-  if (isAuthenticated.value) {
+const handleVisibility = () => {
+  if (document.visibilityState === 'visible' && isAuthenticated.value && adminUser.value?.user_role === 'admin') {
     loadDashboardData();
   }
+};
+
+onMounted(async () => {
+  await fetchSession('admin');
+  if (isAuthenticated.value && adminUser.value?.user_role === 'admin') {
+    loadDashboardData();
+  }
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && isAuthenticated.value && adminUser.value?.user_role === 'admin') {
+      loadDashboardData();
+    }
+  }, 10000);
+  document.addEventListener('visibilitychange', handleVisibility);
+});
+
+onBeforeUnmount(() => {
+  if (pollTimer) clearInterval(pollTimer);
+  document.removeEventListener('visibilitychange', handleVisibility);
 });
 
 const handleLoginSuccess = async () => {
@@ -199,6 +234,20 @@ const handleCheckout = async (bookingId: number) => {
 const handleAddSuiteSuccess = (name: string) => {
   toastMessage.value = `Suite "${name}" registered and published to inventory!`;
   loadDashboardData();
+};
+
+const handleReviewReply = async (reviewId: number, replyText: string) => {
+  const repliedBy = adminUser.value
+    ? `${adminUser.value.first_name} ${adminUser.value.last_name} (${adminUser.value.position})`
+    : 'Executive Admin';
+  const res = await request<{ success: boolean; message: string }>(`/api/reviews/${reviewId}/reply`, {
+    method: 'PATCH',
+    body: JSON.stringify({ staff_reply: replyText, replied_by: repliedBy }),
+  });
+  if (res.success) {
+    toastMessage.value = 'Guest review reply posted.';
+    await loadDashboardData();
+  }
 };
 
 const handleExportReport = () => {

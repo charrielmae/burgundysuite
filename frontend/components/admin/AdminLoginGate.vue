@@ -105,6 +105,15 @@
             Autofill Demo Login
           </button>
         </div>
+
+        <div class="pt-2 text-center">
+          <NuxtLink
+            to="/staff"
+            class="text-[11px] text-white/60 hover:text-[#E5C378] transition-colors font-medium"
+          >
+            Are you a Resort Staff member? Sign in at Staff Portal →
+          </NuxtLink>
+        </div>
       </form>
     </div>
   </div>
@@ -142,7 +151,7 @@ const handleSubmit = async () => {
   loading.value = true;
   error.value = null;
 
-  const result = await login(username.value, password.value);
+  const result = await login(username.value, password.value, undefined, 'admin');
   if (result.success && result.user) {
     emit('login-success', result.user);
   } else {

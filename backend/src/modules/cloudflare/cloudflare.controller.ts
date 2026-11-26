@@ -70,7 +70,7 @@ export class CloudflareController {
       if (action === 'sync_now') {
         const rootDir = this.cloudflareService.getRootDir();
         const storePath = path.join(rootDir, 'data', 'burgundy_store.json');
-        let db = { USER_ACCOUNT: [], STAFF_DETAILS: [], GUEST_DETAILS: [], ROOM_TYPE_DETAILS: [], ROOM_DETAILS: [], ROOM_BOOKING: [], PAYMENT_DETAILS: [] };
+        let db = { USER_ACCOUNT: [], STAFF_DETAILS: [], GUEST_DETAILS: [], ROOM_TYPE_DETAILS: [], ROOM_DETAILS: [], ROOM_BOOKING: [], PAYMENT_DETAILS: [], GUEST_REVIEW: [] };
         if (fs.existsSync(storePath)) {
           db = JSON.parse(fs.readFileSync(storePath, 'utf8'));
         }

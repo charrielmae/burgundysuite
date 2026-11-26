@@ -7,6 +7,7 @@ import { RoomsModule } from './modules/rooms/rooms.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MediaModule } from './modules/media/media.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MediaModule } from './modules/media/media.module';
     BookingsModule,
     AdminModule,
     MediaModule,
+    ReviewsModule,
   ],
 })
 export class AppModule {}

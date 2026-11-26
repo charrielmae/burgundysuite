@@ -20,7 +20,7 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() body: { username?: string; password?: string; turnstileToken?: string },
+    @Body() body: { username?: string; password?: string; turnstileToken?: string; portal?: 'admin' | 'staff' },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
@@ -29,6 +29,7 @@ export class AuthController {
       const username = (b.username || (b as any).user_name || '').trim();
       const password = (b.password || '').trim();
       const turnstileToken = b.turnstileToken;
+      const portal = b.portal;
 
       if (turnstileToken) {
         try {
@@ -67,6 +68,26 @@ export class AuthController {
               'Invalid credentials. Only authorized Admin & Staff accounts have management access. Default admin: admin_clara / admin123',
           },
           HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      if (portal === 'admin' && adminUser.user_role !== 'admin') {
+        throw new HttpException(
+          {
+            success: false,
+            error: 'This is a Staff account. Please sign in through the Staff Portal (/staff).',
+          },
+          HttpStatus.FORBIDDEN
+        );
+      }
+
+      if (portal === 'staff' && adminUser.user_role !== 'staff') {
+        throw new HttpException(
+          {
+            success: false,
+            error: 'This is an Admin account. Please sign in through the Admin Portal (/admin).',
+          },
+          HttpStatus.FORBIDDEN
         );
       }
 

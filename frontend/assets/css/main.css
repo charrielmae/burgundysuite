@@ -143,3 +143,40 @@ body {
   opacity: 0;
   transform: scale(0.96) translateY(8px);
 }
+
+/* Marquee Animations (marquee-01) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--duration, 20s) linear infinite;
+}
+
+.animate-marquee-reverse {
+  animation: marquee var(--duration, 20s) linear infinite reverse;
+}
+
+.marquee-group:hover .animate-marquee,
+.marquee-group:hover .animate-marquee-reverse,
+.marquee-group:hover .animate-marquee-vertical {
+  animation-play-state: paused;
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration, 20s) linear infinite;
+}
