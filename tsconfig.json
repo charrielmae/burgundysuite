@@ -20,6 +20,7 @@
     "node_modules",
     "backend/dist",
     "frontend",
+    "cloudflare-presence",
     "legacy_nextjs_backup"
   ]
 }
